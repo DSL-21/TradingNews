@@ -5,7 +5,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'TradingNews-v0.1.0-GitHub.zip'
+      - 'TradingNews-GitHub-Source.zip'
       - '.github/workflows/build-apk.yml'
 
 permissions:
@@ -26,7 +26,7 @@ jobs:
           java-version: '17'
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
 
       - name: Install Android SDK 36
         run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
@@ -34,9 +34,8 @@ jobs:
       - name: Extract application source
         run: |
           mkdir -p .source
-          unzip -q TradingNews-v0.1.0-GitHub.zip -d .source
-          rm -rf .source/.github
-          cp -a .source/. .
+          unzip -q TradingNews-GitHub-Source.zip -d .source
+          rsync -a --exclude='.github/' --exclude='README.md' .source/ ./
           rm -rf .source
 
       - name: Set up Gradle 8.13
