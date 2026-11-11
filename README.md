@@ -1,24 +1,49 @@
-# Trading News
+# Trading News — Android 0.2.0
 
-Trading News Android MVP (v0.1.0), dark theme, Kotlin + Jetpack Compose.
+Dark-mode Android app for live market headlines. The demo feed has been removed.
+
+## Current functionality
+
+- Live GDELT DOC 2.0 headline discovery (previous 24 hours).
+- Publisher domain, GDELT-seen timestamp, and a safe link to the original article.
+- Topic filters for Markets, Geopolitics, Energy, Crypto, Companies, and Other.
+- Explicit LIVE, CACHED, OFFLINE, and CONNECTING states.
+- Local 10-minute cache, 60-second manual-refresh throttle, bounded network timeouts and response parsing.
+- No sample headlines, fabricated economic events, or heuristic market-impact scores.
+
+## Forex Factory calendar
+
+The Calendar tab opens the official Forex Factory calendar in the browser. It does not scrape, copy, cache, or redistribute event schedules.
+
+Forex Factory's current notices prohibit copying, republication, or redistribution of calendar schedules and the FEED database without prior written consent. Native in-app calendar rows and event reminders therefore require written permission from Fair Economy, Inc.
+
+Official calendar: https://www.forexfactory.com/calendar  
+Notices: https://www.forexfactory.com/notices
+
+## Data and attribution
+
+GDELT DOC 2.0 is used for headline discovery. The app attributes and links to the GDELT Project and opens original publisher articles. The app does not republish article bodies. Topic labels are keyword-based navigation aids, not market-impact ratings, trading signals, price-direction predictions, or recommendations.
+
+GDELT documentation: https://blog.gdeltproject.org/gdelt-doc-2-0-api-debuts/  
+GDELT terms and attribution: https://www.gdeltproject.org/about.html
 
 ## Build the APK with GitHub Actions
 
-1. Upload `TradingNews-v0.1.0-GitHub.zip` from the ChatGPT-provided project bundle to the repository root.
-2. Open the **Actions** tab.
-3. Select **Build Trading News APK**. A push containing the ZIP automatically starts the workflow; alternatively use **Run workflow**.
-4. When the run succeeds, open it and download the `TradingNews-debug-apk` artifact.
-5. Extract the artifact ZIP and install `app-debug.apk` on your Android device.
+1. Upload `TradingNews-v0.2.0-source.zip` to the root of this repository.
+2. Commit the upload to `main`.
+3. The **Build Trading News APK** workflow starts automatically.
+4. The workflow runs parser unit tests and Android lint, then builds the debug APK.
+5. Open the completed run in **Actions** and download `TradingNews-v0.2.0-debug-apk`.
+6. Extract `app-debug.apk` and install it on Android.
 
-The workflow extracts the source project, installs JDK 17 / Android SDK 36, builds `:app:assembleDebug`, and publishes the APK as a 14-day artifact.
+The artifact is a debug APK for testing, not a production-signed Google Play release. Release signing, device QA, privacy-policy completion, and app-store review remain necessary before public store distribution.
 
-## Important data-provider notes
+## Static security review
 
-- The app includes a GDELT-based breaking-news backend connector.
-- The economic-calendar adapter is intentionally disabled until the operator has the appropriate data-display / redistribution rights.
-- Forex Factory is not scraped or consumed through an undocumented export in this public-facing starter. Secure written permission before using its data in a publicly distributed app.
-- Never embed API keys in the APK or commit them to this repository.
+See [docs/SECURITY_AUDIT.md](docs/SECURITY_AUDIT.md). The review is static source analysis plus unit tests; it is not a penetration test, emulator/device QA, or professional security certification.
 
-## Status
-
-The GitHub Actions workflow is committed. The source ZIP still needs to be uploaded to the repository root before the first build can complete. The first CI run is the Android compilation check; fix any build errors reported by Actions before distributing the APK.
+Known limitations before broad public deployment:
+- Each device currently queries GDELT directly. A shared backend/cache, monitoring, and abuse/rate controls are recommended at public scale.
+- Forex Factory native calendar data requires written redistribution permission.
+- Keyword topic categories are not a validated market-impact model.
+- No automatic economic-event alerts are enabled because the in-app event feed is not licensed.
