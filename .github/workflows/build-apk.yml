@@ -5,16 +5,17 @@ on:
   push:
     branches: [main]
     paths:
-      - 'TradingNews-GitHub-Source.zip'
+      - 'TradingNews-v0.2.0-source.zip'
       - '.github/workflows/build-apk.yml'
 
 permissions:
   contents: read
 
 jobs:
-  build-debug-apk:
+  test-and-build:
+    name: Test and build Trading News 0.2.0
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 40
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -31,33 +32,29 @@ jobs:
       - name: Install Android SDK 36
         run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
 
-      - name: Extract application source
+      - name: Extract v0.2.0 source project
         run: |
           mkdir -p .source
-          unzip -q TradingNews-GitHub-Source.zip -d .source
-          rsync -a --exclude='.github/' --exclude='README.md' .source/ ./
+          unzip -q TradingNews-v0.2.0-source.zip -d .source
+          test -f .source/TradingNews-v0.2.0/settings.gradle.kts
+          rsync -a .source/TradingNews-v0.2.0/ ./
           rm -rf .source
-
-      - name: Fix Compose weight import
-        run: |
-          sed -i '/^import androidx\.compose\.foundation\.layout\.weight$/d' app/src/main/java/com/tradingnews/app/MainActivity.kt
-          if grep -q '^import androidx\.compose\.foundation\.layout\.weight$' app/src/main/java/com/tradingnews/app/MainActivity.kt; then
-            echo "Invalid Compose weight import is still present"
-            exit 1
-          fi
 
       - name: Set up Gradle 8.13
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.13'
 
+      - name: Run unit tests and Android lint
+        run: gradle --no-daemon --stacktrace :app:testDebugUnitTest :app:lintDebug
+
       - name: Build debug APK
         run: gradle --no-daemon --stacktrace :app:assembleDebug
 
-      - name: Upload APK artifact
+      - name: Upload installable APK
         uses: actions/upload-artifact@v4
         with:
-          name: TradingNews-debug-apk
+          name: TradingNews-v0.2.0-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
