@@ -1,6 +1,7 @@
 package com.tradingnews.app.data
 
 import org.json.JSONObject
+import java.net.IDN
 import java.net.URI
 import java.security.MessageDigest
 import java.time.Instant
@@ -14,17 +15,18 @@ import java.util.Locale
 internal object NewsParser {
     private val gdeltDateFormatter = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'", Locale.US)
     private val whitespaceRegex = Regex("\\s+")
-    private val numericHostRegex = Regex("[0-9.]+")
-    private val encodedNumericLabelRegex = Regex("0x[0-9a-f]+", RegexOption.IGNORE_CASE)
-    private val categoryPatterns = mapOf(
-        NewsCategories.CRYPTO to CRYPTO_TERMS.map(::wordPattern),
-        NewsCategories.ENERGY to ENERGY_TERMS.map(::wordPattern),
-        NewsCategories.GEOPOLITICS to GEOPOLITICS_TERMS.map(::wordPattern),
-        NewsCategories.COMPANIES to COMPANY_TERMS.map(::wordPattern),
-        NewsCategories.MARKETS to MARKET_TERMS.map(::wordPattern)
-    )
+    private val categoryPatterns by lazy {
+        mapOf(
+            NewsCategories.CRYPTO to CRYPTO_TERMS.map(::wordPattern),
+            NewsCategories.ENERGY to ENERGY_TERMS.map(::wordPattern),
+            NewsCategories.GEOPOLITICS to GEOPOLITICS_TERMS.map(::wordPattern),
+            NewsCategories.COMPANIES to COMPANY_TERMS.map(::wordPattern),
+            NewsCategories.MARKETS to MARKET_TERMS.map(::wordPattern)
+        )
+    }
+
     private fun wordPattern(term: String) =
-        Regex("(?<![\\\\p{L}\\\\p{N}])${Regex.escape(term)}(?![\\\\p{L}\\\\p{N}])")
+        Regex("(?<![\\p{L}\\p{N}])${Regex.escape(term)}(?![\\p{L}\\p{N}])")
 
     fun parse(root: JSONObject): List<NewsItem> {
         val articles = root.optJSONArray("articles") ?: return emptyList()
@@ -39,8 +41,7 @@ internal object NewsParser {
             if (title.isBlank() || !seenUrls.add(url)) continue
 
             val seenAt = parseGdeltSeenDate(item.optString("seendate", "")) ?: continue
-            // Use the validated URL host rather than trusting the provider's free-form domain field.
-            val source = URI(url).host?.takeIf { it.isNotBlank() } ?: continue
+            val source = URI(url).host?.trimEnd('.')?.takeIf { it.isNotBlank() } ?: continue
 
             parsed += NewsItem(
                 id = sha256(url).take(20),
@@ -59,27 +60,42 @@ internal object NewsParser {
     internal fun normalizedSafeHttpsUrl(value: String): String? {
         return try {
             val uri = URI(value)
-            val host = uri.host?.trimEnd('.') ?: return null
+            val rawHost = uri.host ?: return null
+            val host = IDN.toASCII(rawHost.trimEnd('.'), IDN.USE_STD3_ASCII_RULES)
             val labels = host.lowercase(Locale.ROOT).split('.')
+
             if (!uri.scheme.equals("https", ignoreCase = true)) return null
-            if (uri.rawUserInfo != null || uri.rawFragment?.length ?: 0 > 2_048) return null
+            if (uri.rawUserInfo != null || (uri.rawFragment?.length ?: 0) > MAX_FRAGMENT_LENGTH) return null
             if (host.isBlank() || host.length > 253 || !host.contains('.')) return null
             if (labels.any { it.isBlank() || it.length > 63 || it.startsWith('-') || it.endsWith('-') }) return null
-            if (labels.any { !it.matches(Regex("[a-z0-9-]+")) }) return null
-            if (host.equals("localhost", true) ||
-                host.endsWith(".localhost", true) ||
-                host.endsWith(".local", true) ||
-                host.endsWith(".internal", true) ||
-                host.endsWith(".test", true) ||
-                host.endsWith(".invalid", true)
+            if (labels.any { !it.matches(DNS_LABEL_REGEX) }) return null
+
+            val lowerHost = host.lowercase(Locale.ROOT)
+            if (lowerHost == "localhost" ||
+                lowerHost.endsWith(".localhost") ||
+                lowerHost.endsWith(".local") ||
+                lowerHost.endsWith(".internal") ||
+                lowerHost.endsWith(".test") ||
+                lowerHost.endsWith(".invalid")
             ) return null
-            if (numericHostRegex.matches(host) || labels.all { it.toLongOrNull() != null || encodedNumericLabelRegex.matches(it) }) return null
+
+            // Reject numeric, octal, hexadecimal and shortened IPv4 host forms.
+            if (looksLikeNonDnsIp(labels)) return null
             if (uri.port != -1 && uri.port != 443) return null
-            if (uri.schemeSpecificPart.isBlank()) return null
             uri.normalize().toASCIIString()
         } catch (_: Exception) {
             null
         }
+    }
+
+    private fun looksLikeNonDnsIp(labels: List<String>): Boolean {
+        if (labels.size in 1..4 && labels.all { label ->
+                label.toLongOrNull() != null ||
+                    label.startsWith("0x", ignoreCase = true) && label.drop(2).isNotEmpty() &&
+                    label.drop(2).all { it.digitToIntOrNull(16) != null }
+            }
+        ) return true
+        return false
     }
 
     internal fun classifyCategory(title: String): String {
@@ -90,8 +106,9 @@ internal object NewsParser {
             NewsCategories.GEOPOLITICS,
             NewsCategories.COMPANIES,
             NewsCategories.MARKETS
-        ).firstOrNull { category -> categoryPatterns[category].orEmpty().any { it.containsMatchIn(value) } }
-            ?: NewsCategories.OTHER
+        ).firstOrNull { category ->
+            categoryPatterns[category].orEmpty().any { it.containsMatchIn(value) }
+        } ?: NewsCategories.OTHER
     }
 
     private fun parseGdeltSeenDate(value: String): Instant? {
@@ -123,4 +140,6 @@ internal object NewsParser {
     private const val MAX_SOURCE_LENGTH = 120
     private const val MAX_ARTICLES = 50
     private const val MAX_INPUT_RECORDS = 250
+    private const val MAX_FRAGMENT_LENGTH = 2_048
+    private val DNS_LABEL_REGEX = Regex("[a-z0-9-]+")
 }
