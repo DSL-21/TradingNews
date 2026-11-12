@@ -13,6 +13,18 @@ import java.util.Locale
 /** Parses GDELT DOC article-list data. Invalid or unsafe article records are discarded. */
 internal object NewsParser {
     private val gdeltDateFormatter = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'", Locale.US)
+    private val whitespaceRegex = Regex("\\s+")
+    private val numericHostRegex = Regex("[0-9.]+")
+    private val encodedNumericLabelRegex = Regex("0x[0-9a-f]+", RegexOption.IGNORE_CASE)
+    private val categoryPatterns = mapOf(
+        NewsCategories.CRYPTO to CRYPTO_TERMS.map(::wordPattern),
+        NewsCategories.ENERGY to ENERGY_TERMS.map(::wordPattern),
+        NewsCategories.GEOPOLITICS to GEOPOLITICS_TERMS.map(::wordPattern),
+        NewsCategories.COMPANIES to COMPANY_TERMS.map(::wordPattern),
+        NewsCategories.MARKETS to MARKET_TERMS.map(::wordPattern)
+    )
+    private fun wordPattern(term: String) =
+        Regex("(?<![\\\\p{L}\\\\p{N}])${Regex.escape(term)}(?![\\\\p{L}\\\\p{N}])")
 
     fun parse(root: JSONObject): List<NewsItem> {
         val articles = root.optJSONArray("articles") ?: return emptyList()
@@ -21,7 +33,7 @@ internal object NewsParser {
 
         for (index in 0 until minOf(articles.length(), MAX_INPUT_RECORDS)) {
             val item = articles.optJSONObject(index) ?: continue
-            val title = item.optString("title", "").trim().replace(Regex("\\s+"), " ")
+            val title = item.optString("title", "").trim().replace(whitespaceRegex, " ")
             val rawUrl = item.optString("url", "").trim()
             val url = normalizedSafeHttpsUrl(rawUrl) ?: continue
             if (title.isBlank() || !seenUrls.add(url)) continue
@@ -36,7 +48,8 @@ internal object NewsParser {
                 source = source.take(MAX_SOURCE_LENGTH),
                 seenAt = seenAt,
                 url = url,
-                category = classifyCategory(title)
+                category = classifyCategory(title),
+                instrumentMatches = InstrumentRelevanceEngine.match(title)
             )
         }
 
@@ -46,16 +59,23 @@ internal object NewsParser {
     internal fun normalizedSafeHttpsUrl(value: String): String? {
         return try {
             val uri = URI(value)
-            val host = uri.host ?: return null
+            val host = uri.host?.trimEnd('.') ?: return null
+            val labels = host.lowercase(Locale.ROOT).split('.')
             if (!uri.scheme.equals("https", ignoreCase = true)) return null
-            if (uri.rawUserInfo != null) return null
-            if (host.equals("localhost", ignoreCase = true) ||
-                host.endsWith(".localhost", ignoreCase = true) ||
-                host.endsWith(".local", ignoreCase = true)
+            if (uri.rawUserInfo != null || uri.rawFragment?.length ?: 0 > 2_048) return null
+            if (host.isBlank() || host.length > 253 || !host.contains('.')) return null
+            if (labels.any { it.isBlank() || it.length > 63 || it.startsWith('-') || it.endsWith('-') }) return null
+            if (labels.any { !it.matches(Regex("[a-z0-9-]+")) }) return null
+            if (host.equals("localhost", true) ||
+                host.endsWith(".localhost", true) ||
+                host.endsWith(".local", true) ||
+                host.endsWith(".internal", true) ||
+                host.endsWith(".test", true) ||
+                host.endsWith(".invalid", true)
             ) return null
-            if (host.isBlank() || host.any { it.isWhitespace() } || !host.contains('.')) return null
-            if (host.matches(Regex("[0-9.]+")) || host.contains(':')) return null
+            if (numericHostRegex.matches(host) || labels.all { it.toLongOrNull() != null || encodedNumericLabelRegex.matches(it) }) return null
             if (uri.port != -1 && uri.port != 443) return null
+            if (uri.schemeSpecificPart.isBlank()) return null
             uri.normalize().toASCIIString()
         } catch (_: Exception) {
             null
@@ -64,18 +84,14 @@ internal object NewsParser {
 
     internal fun classifyCategory(title: String): String {
         val value = title.lowercase(Locale.ROOT)
-        return when {
-            containsAny(value, CRYPTO_TERMS) -> NewsCategories.CRYPTO
-            containsAny(value, ENERGY_TERMS) -> NewsCategories.ENERGY
-            containsAny(value, GEOPOLITICS_TERMS) -> NewsCategories.GEOPOLITICS
-            containsAny(value, COMPANY_TERMS) -> NewsCategories.COMPANIES
-            containsAny(value, MARKET_TERMS) -> NewsCategories.MARKETS
-            else -> NewsCategories.OTHER
-        }
-    }
-
-    private fun containsAny(text: String, terms: List<String>): Boolean = terms.any { term ->
-        Regex("(?<![\\p{L}\\p{N}])${Regex.escape(term)}(?![\\p{L}\\p{N}])").containsMatchIn(text)
+        return listOf(
+            NewsCategories.CRYPTO,
+            NewsCategories.ENERGY,
+            NewsCategories.GEOPOLITICS,
+            NewsCategories.COMPANIES,
+            NewsCategories.MARKETS
+        ).firstOrNull { category -> categoryPatterns[category].orEmpty().any { it.containsMatchIn(value) } }
+            ?: NewsCategories.OTHER
     }
 
     private fun parseGdeltSeenDate(value: String): Instant? {
