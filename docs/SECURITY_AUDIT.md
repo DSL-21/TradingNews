@@ -1,38 +1,52 @@
 # Trading News 0.2.0 — Static Security Review
 
-**Scope:** Android source project in the v0.2.0 source archive, including its manifest, Gradle configuration, GDELT client/parser, cache behaviour, and GitHub Actions build. This is a static source review and test plan, not a penetration test, device QA, legal opinion, or security certification.
+**Review basis:** The Android source files currently committed directly to the `main` branch. This is a static source review plus the repository's automated parser tests, Android lint, and Gradle build. It is not a penetration test, emulator/device QA, dynamic analysis, legal opinion, or security certification.
 
-## Problems found in v0.1.0 and addressed in v0.2.0
+## Controls present in the current source
 
-| Finding | Risk | v0.2.0 treatment |
-|---|---|---|
-| Empty backend or failed API calls silently displayed invented demo market events and headlines | High — false market information | Removed all demo data. Network failures show OFFLINE or clearly labelled cached data. |
-| Headline impact was inferred from a few keywords | High — misleading implied trading signal | Removed impact scores. Only broad topic categories remain. |
-| GDELT seendate was displayed as article publication time | Medium — timestamp misinterpretation | Labelled as the time GDELT first saw the article. |
-| Publisher links accepted HTTP and credential-bearing URLs | Medium — unsafe external navigation | Only HTTPS URLs with a valid host and no embedded credentials are accepted; UI validates again before opening. |
-| HTTP response size was not limited | Medium — memory-exhaustion risk | Added 2 MB content-length and character-count limits. |
-| Repeated manual refreshes were not throttled | Medium — excessive provider requests | 10-minute local cache and 60-second manual refresh throttle. |
-| Stale data was not distinguished from fresh data | Medium — user may mistake old data for live | Explicit LIVE, CACHED, OFFLINE, CONNECTING states and last-retrieved timestamp. |
-| Forex Factory calendar was assumed usable in a public app without a redistribution licence | High — contractual/database-rights issue | App opens the official calendar; it does not copy, scrape, cache, or republish event schedules. Native integration requires written permission. |
+| Area | Current control |
+|---|---|
+| Android permissions | Internet permission only; no location, contacts, camera, microphone, or notification permission |
+| Transport | HTTPS GDELT endpoint; Android cleartext traffic disabled |
+| External article links | URI parsing, HTTPS-only, no embedded credentials, local host/IP literals and non-default ports rejected |
+| Network timeouts | 10-second connect timeout and 15-second read timeout |
+| Response limits | 2 MB content-length and character-count limits |
+| Redirects | Automatic HTTP redirects disabled |
+| Feed structure | JSON structure is checked before a response is treated as a successful feed |
+| Parser bounds | At most 250 input records are examined and 50 output articles are retained |
+| Article data | Titles and source labels are length-limited; publisher label is derived from the validated URL host |
+| De-duplication | Duplicate article URLs are discarded |
+| Cache | Compact parsed fields only; cache is discarded if malformed, future-dated, or older than 24 hours |
+| Refresh control | 10-minute cache lifetime and 60-second per-device manual refresh throttle |
+| Feed state | LIVE, CACHED, OFFLINE, and CONNECTING are distinct states |
+| Data handling | No account, API key, analytics SDK, or advertising SDK in this release |
+| CI | Parser tests, Android lint, APK build; GitHub Actions references are pinned to immutable commit SHAs |
+| Dependency updates | Dependabot configured for Gradle and GitHub Actions |
 
-## Remaining risks
+## Issues addressed during this review
 
-1. The Android client queries GDELT directly. At public scale this creates per-device provider load. Add a shared backend/cache, monitoring, rate limits, abuse protection, and health alerts before large-scale distribution.
-2. GDELT is a news-discovery feed. Headlines can be incomplete, duplicated, misleading, or irrelevant. Topic classification is keyword-based and does not estimate validated market impact or price direction.
-3. GDELT attribution does not provide rights to republish third-party article bodies or images. The app only displays headlines/source metadata and links to original publishers.
-4. Native Forex Factory calendar data and in-app event alerts remain disabled until written permission covers schedules, forecast/previous/actual values, caching, display, and redistribution.
-5. Current GitHub Actions output is a debug APK. It is not a production-signed Play Store release.
-6. No Android emulator/device QA, dependency vulnerability scan, dynamic analysis, or professional penetration test has been performed. CI tests and compilation do not replace those activities.
+1. **Invented fallback data:** Removed. No sample headlines or fabricated economic events are shown when the provider is unavailable.
+2. **Unvalidated impact labels:** Removed. Keyword topic labels are for navigation only and are not market-impact ratings or trading signals.
+3. **Unbounded cache age:** Cache older than 24 hours is discarded; timestamps in the future are treated as invalid.
+4. **Raw response stored on device:** Cache now stores only the bounded, parsed article fields rather than the full provider response.
+5. **Provider-supplied domain label:** The display source is derived from the validated HTTPS article URL host, not the free-form `domain` field.
+6. **Unbounded parser work:** The parser caps records examined and results retained.
+7. **Malformed preferences:** Invalid or type-corrupted local cache entries are cleared instead of being allowed to crash feed startup.
+8. **Workflow supply chain:** GitHub Actions are pinned to reviewed immutable commit SHAs in CI and release workflows.
 
-## Checks included in v0.2.0
+## Remaining risks and limitations
 
-Unit tests cover valid HTTPS article parsing, rejection of HTTP/javascript/credential URLs, invalid timestamps, ordering/deduplication, and topic classification. GitHub Actions runs unit tests, Android lint, and debug APK build.
+1. **No shared backend:** Each Android device queries GDELT directly. For a public audience, deploy a shared backend/cache with rate limiting, monitoring, abuse controls, and service-health alerts before scaling.
+2. **Provider quality:** GDELT is a news-discovery source. Coverage is not exhaustive; headlines may be duplicated, misleading, incomplete, or late. Keyword categories do not determine factual accuracy, sentiment, causality, or expected price direction.
+3. **External article content:** The app displays headline metadata and links to the publisher. It does not republish article bodies or images. GDELT attribution does not automatically grant rights to third-party publisher content.
+4. **Forex Factory:** The Calendar tab opens the official website only. Do not scrape, cache, copy, or redistribute event schedules without written permission covering public app display and redistribution.
+5. **No push or economic-event reminders:** They are not implemented in this version.
+6. **No dynamic mobile testing:** No Android emulator/device matrix, MobSF/dynamic test, external penetration test, or professional security assessment has been performed.
+7. **Release signing:** The attached APK is a debug build, not a production-signed release. A persistent private signing key must be provisioned as protected GitHub Actions secrets before building distributable production releases. Never commit a keystore or its password.
+8. **Privacy and compliance:** The privacy policy in this repository is a template. The operator must complete it with correct legal identity, contact details, jurisdiction-specific disclosures, and store declarations before public distribution.
 
-## Before public store release
+## Automated checks in CI
 
-- Deploy shared news aggregation with HTTPS, rate controls, monitoring, structured logs, and alerting.
-- Complete a real privacy policy and support contact details.
-- Obtain written data-display/redistribution permission for Forex Factory or select a calendar provider whose licence permits public app display.
-- Add protected release signing (GitHub Actions secrets; never commit keystores or passwords).
-- Run emulator/device QA, dependency vulnerability scanning, and an external mobile security review.
-- Complete Google Play Data safety and relevant app declarations.
+The test suite covers valid HTTPS article parsing, domain-label integrity, rejection of unsafe URLs, invalid timestamps, parsing of ISO cache timestamps, sorting and de-duplication, result bounds, and topic categorization. GitHub Actions runs `:app:testDebugUnitTest`, `:app:lintDebug`, and `:app:assembleDebug`.
+
+These checks establish that the project compiles and the tested cases pass; they do not prove that every runtime path, network state, Android version, or threat scenario is safe.
