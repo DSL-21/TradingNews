@@ -25,7 +25,8 @@ data class NewsItem(
     val source: String,
     val seenAt: Instant,
     val url: String,
-    val category: String
+    val category: String,
+    val instrumentMatches: List<InstrumentMatch> = emptyList()
 )
 
 data class NewsFeed(
