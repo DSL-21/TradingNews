@@ -34,6 +34,7 @@ object NewsNotifications {
     }
 
     fun canPost(context: Context): Boolean {
+        if (!NewsWorkScheduler.isAlertsEnabled(context)) return false
         if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) return false
         return Build.VERSION.SDK_INT < 33 ||
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
