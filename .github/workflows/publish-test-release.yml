@@ -1,0 +1,117 @@
+name: Publish Trading News Test Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version (example: 0.2.0-beta.1)"
+        required: true
+        default: "0.2.0-beta.1"
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build-test-and-release:
+    name: Test, build, and publish Android APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate release version
+        id: release
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          if [[ ! "$RELEASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.-]+)?$ ]]; then
+            echo "Invalid version format."
+            exit 1
+          fi
+          echo "tag=v$RELEASE_VERSION" >> "$GITHUB_OUTPUT"
+          echo "version=$RELEASE_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Install Android SDK 36
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Set up Gradle 8.13
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+
+      - name: Check for demo feeds
+        run: |
+          if grep -RniE 'DemoData|sampleHeadline|mockNews|fakeEvent' app/src/main; then
+            echo "Unexpected sample/demo market data found"
+            exit 1
+          fi
+
+      - name: Run unit tests and Android lint
+        run: gradle --no-daemon --stacktrace :app:testDebugUnitTest :app:lintDebug
+
+      - name: Build debug APK
+        run: gradle --no-daemon --stacktrace :app:assembleDebug
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TradingNews-${{ steps.release.outputs.version }}-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Prepare release notes
+        env:
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          cat > release-notes.md <<EOF
+          # Trading News $RELEASE_VERSION — Testing release
+
+          This is a **pre-release debug APK** for device testing, not a production-signed Google Play release.
+
+          ## Included
+          - English dark-mode Android application.
+          - Live GDELT DOC 2.0 headlines, topic filters, and original publisher links.
+          - Explicit LIVE / CACHED / OFFLINE feed states.
+          - No demo headlines or fabricated economic events.
+
+          ## Economic calendar
+          The Calendar tab opens the official Forex Factory calendar in the browser. Native in-app redistribution and calendar alerts are not included because written data-display permission has not been obtained.
+
+          ## Important
+          - This APK uses the debug application ID suffix and is intended for testing.
+          - It has passed the repository's unit tests, Android lint, and APK build in this workflow.
+          - Build success is not a substitute for device QA, external security testing, or legal review.
+          EOF
+
+      - name: Create or update GitHub pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          APK="app/build/outputs/apk/debug/app-debug.apk"
+          ASSET="TradingNews-$RELEASE_VERSION-debug.apk"
+
+          if gh release view "$RELEASE_TAG" --repo "$GH_REPO" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" "$APK#$ASSET" --clobber --repo "$GH_REPO"
+          else
+            gh release create "$RELEASE_TAG" "$APK#$ASSET" \
+              --repo "$GH_REPO" \
+              --target "$GITHUB_SHA" \
+              --title "Trading News $RELEASE_VERSION (Testing)" \
+              --notes-file release-notes.md \
+              --prerelease
+          fi
