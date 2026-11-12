@@ -13,7 +13,8 @@ class NewsParserTest {
         val root = JSONObject().put("articles", JSONArray().put(article(
             title = "Central bank signals a new interest rate decision",
             url = "https://news.example.com/story?id=1",
-            seen = "20261111T123400Z"
+            seen = "20261111T123400Z",
+            domain = "attacker.example"
         )))
 
         val parsed = NewsParser.parse(root)
@@ -25,15 +26,25 @@ class NewsParserTest {
     }
 
     @Test
-    fun rejectsInsecureOrInvalidArticleUrls() {
-        val root = JSONObject().put("articles", JSONArray()
-            .put(article("HTTP story", "http://example.com/story", "20261111T123400Z"))
-            .put(article("Script URL", "javascript:alert(1)", "20261111T123400Z"))
-            .put(article("Credential URL", "https://user:pass@example.com/story", "20261111T123400Z"))
-            .put(article("Localhost", "https://localhost/story", "20261111T123400Z"))
-            .put(article("Good story", "https://example.com/good", "20261111T123400Z")))
+    fun rejectsInsecureAndNonPublicArticleUrls() {
+        val unsafeUrls = listOf(
+            "http://example.com/story",
+            "javascript:alert(1)",
+            "https://user:pass@example.com/story",
+            "https://localhost/story",
+            "https://news.local/story",
+            "https://127.0.0.1/story",
+            "https://192.168.1.10/story",
+            "https://[::1]/story",
+            "https://example.com:8443/story"
+        )
+        val articles = JSONArray()
+        unsafeUrls.forEachIndexed { index, url ->
+            articles.put(article("Unsafe $index", url, "20261111T123400Z"))
+        }
+        articles.put(article("Good story", "https://example.com/good", "20261111T123400Z"))
 
-        val parsed = NewsParser.parse(root)
+        val parsed = NewsParser.parse(JSONObject().put("articles", articles))
 
         assertEquals(1, parsed.size)
         assertEquals("Good story", parsed.single().title)
@@ -50,6 +61,18 @@ class NewsParserTest {
     }
 
     @Test
+    fun acceptsIsoTimestampFromCompactLocalCache() {
+        val root = JSONObject().put("articles", JSONArray().put(article(
+            title = "Cached inflation report",
+            url = "https://example.com/cache",
+            seen = "2026-11-11T12:34:00Z"
+        )))
+        val parsed = NewsParser.parse(root)
+        assertEquals(1, parsed.size)
+        assertEquals("2026-11-11T12:34:00Z", parsed.single().seenAt.toString())
+    }
+
+    @Test
     fun sortsNewestFirstAndDeduplicatesUrls() {
         val root = JSONObject().put("articles", JSONArray()
             .put(article("Old", "https://example.com/old", "20261111T100000Z"))
@@ -59,6 +82,22 @@ class NewsParserTest {
         val parsed = NewsParser.parse(root)
 
         assertEquals(listOf("New", "Old"), parsed.map { it.title })
+    }
+
+    @Test
+    fun limitsParsedResultsToFiftyArticles() {
+        val articles = JSONArray()
+        repeat(260) { index ->
+            articles.put(article(
+                title = "Market story $index",
+                url = "https://example.com/story-$index",
+                seen = "20261111T123400Z"
+            ))
+        }
+
+        val parsed = NewsParser.parse(JSONObject().put("articles", articles))
+
+        assertEquals(50, parsed.size)
     }
 
     @Test
@@ -76,19 +115,25 @@ class NewsParserTest {
         assertNull(NewsParser.normalizedSafeHttpsUrl("http://example.com"))
         assertNull(NewsParser.normalizedSafeHttpsUrl("https://user:pass@example.com"))
         assertNull(NewsParser.normalizedSafeHttpsUrl("https://localhost/path"))
+        assertNull(NewsParser.normalizedSafeHttpsUrl(""))
         assertTrue(NewsParser.normalizedSafeHttpsUrl("https://example.com/news")!!.startsWith("https://"))
     }
 
     @Test
-    fun normalizesPathsAndRejectsBlankUrls() {
+    fun normalizesPathsAndAcceptsDefaultHttpsPort() {
         val normalized = NewsParser.normalizedSafeHttpsUrl("https://example.com/a/../b")
         assertEquals("https://example.com/b", normalized)
-        assertNull(NewsParser.normalizedSafeHttpsUrl(""))
+        assertEquals("https://example.com:443/path", NewsParser.normalizedSafeHttpsUrl("https://example.com:443/path"))
     }
 
-    private fun article(title: String, url: String, seen: String) = JSONObject()
+    private fun article(
+        title: String,
+        url: String,
+        seen: String,
+        domain: String = ""
+    ) = JSONObject()
         .put("title", title)
         .put("url", url)
-        .put("domain", "")
+        .put("domain", domain)
         .put("seendate", seen)
 }
