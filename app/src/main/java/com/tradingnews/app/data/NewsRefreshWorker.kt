@@ -11,13 +11,15 @@ class NewsRefreshWorker(
 ) : CoroutineWorker(appContext, params) {
 
     override suspend fun doWork(): Result {
+        if (!NewsWorkScheduler.isAutoRefreshEnabled(applicationContext)) return Result.success()
+
         val repository = TradingNewsRepository(applicationContext)
         return try {
             val previous = repository.readCachedFeed()
             val previousIds = previous?.articles?.mapTo(HashSet()) { it.id }.orEmpty()
             val updated = repository.load(forceRefresh = true)
 
-            if (updated.status == FeedStatus.LIVE && previous != null) {
+            if (updated.status == FeedStatus.LIVE && previous != null && NewsWorkScheduler.isAlertsEnabled(applicationContext)) {
                 val newArticles = updated.articles
                     .filterNot { it.id in previousIds }
                     .filter { it.instrumentMatches.any { match -> match.score >= 40 } }
