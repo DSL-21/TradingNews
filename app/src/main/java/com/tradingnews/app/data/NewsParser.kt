@@ -27,10 +27,8 @@ internal object NewsParser {
             if (title.isBlank() || !seenUrls.add(url)) continue
 
             val seenAt = parseGdeltSeenDate(item.optString("seendate", "")) ?: continue
-            val source = item.optString("domain", "").trim().ifBlank {
-                runCatching { URI(url).host.orEmpty() }.getOrDefault("")
-            }
-            if (source.isBlank()) continue
+            // Use the validated URL host rather than trusting the provider's free-form domain field.
+            val source = URI(url).host?.takeIf { it.isNotBlank() } ?: continue
 
             parsed += NewsItem(
                 id = sha256(url).take(20),
