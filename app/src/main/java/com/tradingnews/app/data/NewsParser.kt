@@ -17,9 +17,9 @@ internal object NewsParser {
     fun parse(root: JSONObject): List<NewsItem> {
         val articles = root.optJSONArray("articles") ?: return emptyList()
         val seenUrls = HashSet<String>()
-        val parsed = ArrayList<NewsItem>(articles.length())
+        val parsed = ArrayList<NewsItem>(minOf(articles.length(), MAX_ARTICLES))
 
-        for (index in 0 until articles.length()) {
+        for (index in 0 until minOf(articles.length(), MAX_INPUT_RECORDS)) {
             val item = articles.optJSONObject(index) ?: continue
             val title = item.optString("title", "").trim().replace(Regex("\\s+"), " ")
             val rawUrl = item.optString("url", "").trim()
@@ -42,7 +42,7 @@ internal object NewsParser {
             )
         }
 
-        return parsed.sortedByDescending { it.seenAt }
+        return parsed.sortedByDescending { it.seenAt }.take(MAX_ARTICLES)
     }
 
     internal fun normalizedSafeHttpsUrl(value: String): String? {
@@ -50,9 +50,14 @@ internal object NewsParser {
             val uri = URI(value)
             val host = uri.host ?: return null
             if (!uri.scheme.equals("https", ignoreCase = true)) return null
-            if (uri.rawUserInfo != null || host.equals("localhost", ignoreCase = true)) return null
-            if (host.isBlank() || host.any { it.isWhitespace() }) return null
-            if (uri.port !in -1..65535) return null
+            if (uri.rawUserInfo != null) return null
+            if (host.equals("localhost", ignoreCase = true) ||
+                host.endsWith(".localhost", ignoreCase = true) ||
+                host.endsWith(".local", ignoreCase = true)
+            ) return null
+            if (host.isBlank() || host.any { it.isWhitespace() } || !host.contains('.')) return null
+            if (host.matches(Regex("[0-9.]+")) || host.contains(':')) return null
+            if (uri.port != -1 && uri.port != 443) return null
             uri.normalize().toASCIIString()
         } catch (_: Exception) {
             null
@@ -102,4 +107,6 @@ internal object NewsParser {
 
     private const val MAX_TITLE_LENGTH = 300
     private const val MAX_SOURCE_LENGTH = 120
+    private const val MAX_ARTICLES = 50
+    private const val MAX_INPUT_RECORDS = 250
 }
