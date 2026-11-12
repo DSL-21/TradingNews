@@ -5,7 +5,10 @@ on:
   push:
     branches: [main]
     paths:
-      - 'TradingNews-v0.2.0-source.zip'
+      - 'app/**'
+      - '*.gradle.kts'
+      - 'gradle.properties'
+      - '.github/workflows/build-apk.yml'
 
 permissions:
   contents: read
@@ -31,18 +34,17 @@ jobs:
       - name: Install Android SDK 36
         run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
 
-      - name: Extract v0.2.0 source project
-        run: |
-          mkdir -p .source
-          unzip -q TradingNews-v0.2.0-source.zip -d .source
-          test -f .source/TradingNews-v0.2.0/settings.gradle.kts
-          rsync -a .source/TradingNews-v0.2.0/ ./
-          rm -rf .source
-
       - name: Set up Gradle 8.13
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.13'
+
+      - name: Verify source contains no sample feeds
+        run: |
+          if grep -RniE 'DemoData|sampleHeadline|mockNews|fakeEvent' app/src/main; then
+            echo "Unexpected sample/demo market data found"
+            exit 1
+          fi
 
       - name: Run unit tests and Android lint
         run: gradle --no-daemon --stacktrace :app:testDebugUnitTest :app:lintDebug
