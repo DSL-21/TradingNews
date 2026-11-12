@@ -3,7 +3,6 @@ package com.tradingnews.app.data
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -83,7 +82,7 @@ class NewsParserTest {
     @Test
     fun normalizesPathsAndRejectsBlankUrls() {
         val normalized = NewsParser.normalizedSafeHttpsUrl("https://example.com/a/../b")
-        assertEquals("https://example.com/../b", normalized?.takeIf { it.isNotBlank() } ?: "https://example.com/../b")
+        assertEquals("https://example.com/b", normalized)
         assertNull(NewsParser.normalizedSafeHttpsUrl(""))
     }
 
