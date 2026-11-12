@@ -19,29 +19,31 @@ class TradingNewsRepository(context: Context) {
     private val preferences = context.applicationContext.getSharedPreferences(CACHE_PREFS, Context.MODE_PRIVATE)
 
     fun readCachedFeed(): NewsFeed? {
-        val payload = preferences.getString(KEY_PAYLOAD, null) ?: return null
-        val retrievedAt = preferences.getString(KEY_RETRIEVED_AT, null)?.let(::parseInstant) ?: run {
-            clearCache()
-            return null
-        }
-        val ageSeconds = Duration.between(retrievedAt, Instant.now()).seconds
-        if (ageSeconds < 0 || ageSeconds > MAX_CACHE_AGE_SECONDS) {
-            clearCache()
-            return null
-        }
+        return try {
+            val payload = preferences.getString(KEY_PAYLOAD, null) ?: return null
+            val retrievedAtValue = preferences.getString(KEY_RETRIEVED_AT, null)
+            val retrievedAt = retrievedAtValue?.let(::parseInstant)
+                ?: throw IOException("Cached news timestamp is missing or invalid")
 
-        return runCatching {
+            val ageSeconds = Duration.between(retrievedAt, Instant.now()).seconds
+            if (ageSeconds < 0 || ageSeconds > MAX_CACHE_AGE_SECONDS) {
+                clearCache()
+                return null
+            }
+
             val root = JSONObject(payload)
             if (root.optJSONArray("articles") == null) {
                 throw IOException("Cached news data has an invalid structure")
             }
+
             NewsFeed(
                 articles = NewsParser.parse(root),
                 retrievedAt = retrievedAt,
                 status = FeedStatus.CACHED,
                 notice = "Showing locally cached headlines. Refresh to check for newer stories."
             )
-        }.getOrElse {
+        } catch (_: Exception) {
+            // A malformed or type-corrupted preference must never crash feed startup.
             clearCache()
             null
         }
