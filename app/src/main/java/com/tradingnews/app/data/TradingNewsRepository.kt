@@ -4,6 +4,7 @@ import android.content.Context
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
 import java.io.InputStreamReader
@@ -19,43 +20,69 @@ class TradingNewsRepository(context: Context) {
 
     fun readCachedFeed(): NewsFeed? {
         val payload = preferences.getString(KEY_PAYLOAD, null) ?: return null
-        val retrievedAt = preferences.getString(KEY_RETRIEVED_AT, null)?.let(::parseInstant) ?: return null
+        val retrievedAt = preferences.getString(KEY_RETRIEVED_AT, null)?.let(::parseInstant) ?: run {
+            clearCache()
+            return null
+        }
+        val ageSeconds = Duration.between(retrievedAt, Instant.now()).seconds
+        if (ageSeconds < 0 || ageSeconds > MAX_CACHE_AGE_SECONDS) {
+            clearCache()
+            return null
+        }
+
         return runCatching {
+            val root = JSONObject(payload)
+            if (root.optJSONArray("articles") == null) {
+                throw IOException("Cached news data has an invalid structure")
+            }
             NewsFeed(
-                articles = NewsParser.parse(JSONObject(payload)),
+                articles = NewsParser.parse(root),
                 retrievedAt = retrievedAt,
                 status = FeedStatus.CACHED,
                 notice = "Showing locally cached headlines. Refresh to check for newer stories."
             )
-        }.getOrNull()
+        }.getOrElse {
+            clearCache()
+            null
+        }
     }
 
     suspend fun load(forceRefresh: Boolean): NewsFeed = withContext(Dispatchers.IO) {
         val cached = readCachedFeed()
         val now = Instant.now()
         val lastFetch = preferences.getLong(KEY_LAST_FETCH_EPOCH, 0L)
-        val age = cached?.let { Duration.between(it.retrievedAt, now).seconds } ?: Long.MAX_VALUE
+        val secondsSinceLastFetch = now.epochSecond - lastFetch
 
-        if (cached != null && !forceRefresh && age in 0 until CACHE_TTL_SECONDS) {
-            return@withContext cached.copy(notice = "Cached headlines from ${cached.retrievedAt}.")
+        if (cached != null && !forceRefresh && Duration.between(cached.retrievedAt, now).seconds in 0 until CACHE_TTL_SECONDS) {
+            return@withContext cached.copy(notice = "Cached headlines retrieved at ${cached.retrievedAt}.")
         }
-        if (now.epochSecond - lastFetch < MIN_REFRESH_INTERVAL_SECONDS) {
+
+        if (lastFetch > 0L && secondsSinceLastFetch in 0 until MIN_REFRESH_INTERVAL_SECONDS) {
             if (cached != null) {
-                return@withContext cached.copy(notice = "Refresh is rate-limited on this device. Showing the latest cached headlines.")
+                return@withContext cached.copy(
+                    notice = "Refresh is rate-limited on this device. Showing cached headlines from ${cached.retrievedAt}."
+                )
             }
             throw IOException("Please wait before retrying the live news feed.")
         }
 
         preferences.edit().putLong(KEY_LAST_FETCH_EPOCH, now.epochSecond).apply()
+
         try {
-            val raw = fetchGdeltPayload()
-            val root = JSONObject(raw)
+            val rawPayload = fetchGdeltPayload()
+            val root = JSONObject(rawPayload)
+            if (root.optJSONArray("articles") == null) {
+                throw IOException("News provider returned an unexpected JSON structure")
+            }
+
             val articles = NewsParser.parse(root)
             val retrievedAt = Instant.now()
+            val compactCache = serializeCache(articles)
             preferences.edit()
-                .putString(KEY_PAYLOAD, raw)
+                .putString(KEY_PAYLOAD, compactCache)
                 .putString(KEY_RETRIEVED_AT, retrievedAt.toString())
                 .apply()
+
             NewsFeed(
                 articles = articles,
                 retrievedAt = retrievedAt,
@@ -90,12 +117,19 @@ class TradingNewsRepository(context: Context) {
                 readTimeout = READ_TIMEOUT_MS
                 instanceFollowRedirects = false
                 setRequestProperty("Accept", "application/json")
+                setRequestProperty("Accept-Encoding", "identity")
                 setRequestProperty("User-Agent", USER_AGENT)
             }
+
             val responseCode = connection.responseCode
-            if (responseCode !in 200..299) throw IOException("News provider returned HTTP $responseCode")
+            if (responseCode !in 200..299) {
+                throw IOException("News provider returned HTTP $responseCode")
+            }
+
             val contentLength = connection.contentLengthLong
-            if (contentLength > MAX_RESPONSE_BYTES) throw IOException("News response exceeded the size limit")
+            if (contentLength > MAX_RESPONSE_BYTES) {
+                throw IOException("News response exceeded the size limit")
+            }
 
             val body = InputStreamReader(connection.inputStream, Charsets.UTF_8).use { reader ->
                 readBounded(reader, MAX_RESPONSE_CHARS)
@@ -107,16 +141,39 @@ class TradingNewsRepository(context: Context) {
         }
     }
 
+    private fun serializeCache(articles: List<NewsItem>): String {
+        val cachedArticles = JSONArray()
+        articles.forEach { article ->
+            cachedArticles.put(
+                JSONObject()
+                    .put("title", article.title)
+                    .put("url", article.url)
+                    .put("domain", article.source)
+                    .put("seendate", article.seenAt.toString())
+            )
+        }
+        return JSONObject().put("articles", cachedArticles).toString()
+    }
+
     private fun readBounded(reader: InputStreamReader, maxChars: Int): String {
         val output = StringBuilder()
         val buffer = CharArray(8_192)
         while (true) {
             val read = reader.read(buffer)
             if (read < 0) break
-            if (output.length + read > maxChars) throw IOException("News response exceeded the size limit")
+            if (output.length + read > maxChars) {
+                throw IOException("News response exceeded the size limit")
+            }
             output.append(buffer, 0, read)
         }
         return output.toString()
+    }
+
+    private fun clearCache() {
+        preferences.edit()
+            .remove(KEY_PAYLOAD)
+            .remove(KEY_RETRIEVED_AT)
+            .apply()
     }
 
     private fun parseInstant(value: String): Instant? = runCatching { Instant.parse(value) }.getOrNull()
@@ -141,6 +198,7 @@ class TradingNewsRepository(context: Context) {
         const val MAX_RESPONSE_BYTES = 2_000_000L
         const val MAX_RESPONSE_CHARS = 2_000_000
         const val CACHE_TTL_SECONDS = 10 * 60L
+        const val MAX_CACHE_AGE_SECONDS = 24 * 60 * 60L
         const val MIN_REFRESH_INTERVAL_SECONDS = 60L
     }
 }
