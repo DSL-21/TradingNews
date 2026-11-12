@@ -1,11 +1,16 @@
 package com.tradingnews.app
 
+import android.Manifest
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -47,9 +52,11 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -62,10 +69,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import com.tradingnews.app.data.FeedStatus
 import com.tradingnews.app.data.NewsCategories
 import com.tradingnews.app.data.NewsItem
+import com.tradingnews.app.data.NewsWorkScheduler
 import java.net.URI
 import java.time.Duration
 import java.time.Instant
@@ -92,6 +101,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, true)
+        NewsWorkScheduler.ensureScheduled(this)
         setContent { TradingNewsTheme { TradingNewsApp(viewModel) } }
     }
 }
@@ -268,45 +278,7 @@ private fun DashboardScreen(state: TradingNewsUiState, onCalendar: () -> Unit, o
 
 @Composable
 private fun CalendarScreen() {
-    val context = LocalContext.current
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 18.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
-    ) {
-        item { SectionTitle("ECONOMIC CALENDAR", "Official Forex Factory schedule") }
-        item {
-            Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Forex Factory Calendar", color = TextMain, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                    Text(
-                        "Open the live calendar directly on Forex Factory. Trading News does not copy or republish its event data.",
-                        color = TextMuted, fontSize = 12.sp, lineHeight = 18.sp
-                    )
-                    Button(
-                        onClick = { openExternalUrl(context, FOREX_FACTORY_CALENDAR) },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = Accent, contentColor = Color(0xFF06231D))
-                    ) {
-                        Text("Open official calendar", fontWeight = FontWeight.Bold)
-                        Spacer(Modifier.width(7.dp))
-                        Icon(Icons.Outlined.OpenInNew, contentDescription = null, modifier = Modifier.size(17.dp))
-                    }
-                }
-            }
-        }
-        item {
-            Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Why is the calendar opened on its source?", color = TextMain, fontWeight = FontWeight.SemiBold)
-                    Text(
-                        "Forex Factory's current notices prohibit copying, republication, or redistribution of its calendar schedules and database without prior written consent. The official website remains available here; an in-app data feed and Trading News event alerts require written permission from Forex Factory.",
-                        color = TextMuted, fontSize = 11.sp, lineHeight = 17.sp
-                    )
-                }
-            }
-        }
-    }
+    EconomicCalendarScreen()
 }
 
 @Composable
@@ -349,18 +321,81 @@ private fun NewsScreen(state: TradingNewsUiState) {
 @Composable
 private fun SettingsScreen(state: TradingNewsUiState) {
     val context = LocalContext.current
+    var autoRefresh by rememberSaveable {
+        mutableStateOf(NewsWorkScheduler.isAutoRefreshEnabled(context))
+    }
+    var alertsEnabled by rememberSaveable {
+        mutableStateOf(NewsWorkScheduler.isAlertsEnabled(context))
+    }
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        alertsEnabled = granted
+        NewsWorkScheduler.setAlertsEnabled(context, granted)
+    }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 17.dp, bottom = 22.dp),
         verticalArrangement = Arrangement.spacedBy(13.dp)
     ) {
-        item { SectionTitle("SETTINGS", "Data sources and app information") }
+        item { SectionTitle("SETTINGS", "Refresh, alerts, data sources and app information") }
+        item {
+            SettingsCard {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Text("Automatic news refresh", color = TextMain, fontWeight = FontWeight.SemiBold)
+                            Text("Background sync every 15 minutes when Android allows it. Battery saver and Doze may delay execution.", color = TextMuted, fontSize = 11.sp, lineHeight = 16.sp)
+                        }
+                        Switch(
+                            checked = autoRefresh,
+                            onCheckedChange = {
+                                autoRefresh = it
+                                NewsWorkScheduler.setAutoRefreshEnabled(context, it)
+                            }
+                        )
+                    }
+                    HorizontalDivider(color = Border)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Text("Background headline alerts", color = TextMain, fontWeight = FontWeight.SemiBold)
+                            Text("Local Android notifications for new headlines matched to supported instruments. This is not remote Firebase push.", color = TextMuted, fontSize = 11.sp, lineHeight = 16.sp)
+                        }
+                        Switch(
+                            checked = alertsEnabled,
+                            onCheckedChange = { enabled ->
+                                if (!enabled) {
+                                    alertsEnabled = false
+                                    NewsWorkScheduler.setAlertsEnabled(context, false)
+                                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                                    ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+                                ) {
+                                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                } else {
+                                    alertsEnabled = true
+                                    NewsWorkScheduler.setAlertsEnabled(context, true)
+                                }
+                            }
+                        )
+                    }
+                }
+            }
+        }
         item {
             SettingsCard {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("News source", color = TextMain, fontWeight = FontWeight.SemiBold)
                     Text("GDELT DOC 2.0", color = Accent, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                    Text("The feed shows headlines, source domains, and the time GDELT first saw an article. Each headline opens the original publisher. GDELT does not provide a validated market-impact rating, so Trading News does not invent one.", color = TextMuted, fontSize = 11.sp, lineHeight = 17.sp)
+                    Text("The feed shows genuine headlines, publisher hosts, and the time GDELT first saw an article. Instrument matches are keyword-based relevance hints, not validated impact or trading signals.", color = TextMuted, fontSize = 11.sp, lineHeight = 17.sp)
                     TextButton(onClick = { openExternalUrl(context, GDELT_ABOUT) }, modifier = Modifier.align(Alignment.End)) {
                         Text("GDELT terms and attribution", color = Accent)
                         Icon(Icons.Outlined.OpenInNew, contentDescription = null, tint = Accent, modifier = Modifier.padding(start = 5.dp).size(15.dp))
@@ -371,12 +406,15 @@ private fun SettingsScreen(state: TradingNewsUiState) {
         item {
             SettingsCard {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Economic calendar", color = TextMain, fontWeight = FontWeight.SemiBold)
-                    Text("Forex Factory is opened on its official website. Native in-app event data and reminders are disabled until written data-display permission is obtained.", color = TextMuted, fontSize = 11.sp, lineHeight = 17.sp)
-                    TextButton(onClick = { openExternalUrl(context, FOREX_FACTORY_CALENDAR) }, modifier = Modifier.align(Alignment.End)) {
-                        Text("Open Forex Factory", color = Accent)
-                        Icon(Icons.Outlined.OpenInNew, contentDescription = null, tint = Accent, modifier = Modifier.padding(start = 5.dp).size(15.dp))
-                    }
+                    Text("Economic calendar and market data", color = TextMain, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        if (BuildConfig.BACKEND_BASE_URL.isBlank()) {
+                            "Native calendar and measured event reactions need your licensed Trading Economics API account and the Trading News backend URL. No sample calendar or synthetic market prices are shown."
+                        } else {
+                            "Calendar and historical event-reaction data are requested from your configured Trading News backend. Verify provider subscription and data-display rights."
+                        },
+                        color = TextMuted, fontSize = 11.sp, lineHeight = 17.sp
+                    )
                 }
             }
         }
@@ -384,7 +422,7 @@ private fun SettingsScreen(state: TradingNewsUiState) {
             SettingsCard {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("Privacy and storage", color = TextMain, fontWeight = FontWeight.SemiBold)
-                    Text("No account or API key is required. The app stores only a local cache of the latest GDELT headline response. No provider credentials are embedded in the APK.", color = TextMuted, fontSize = 11.sp, lineHeight = 17.sp)
+                    Text("The app stores a compact local GDELT headline cache and refresh preferences. Provider API credentials belong on the backend and must never be embedded in the APK.", color = TextMuted, fontSize = 11.sp, lineHeight = 17.sp)
                 }
             }
         }
@@ -393,7 +431,7 @@ private fun SettingsScreen(state: TradingNewsUiState) {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("About Trading News", color = TextMain, fontWeight = FontWeight.SemiBold)
                     Text("Version 0.2.0 • Android", color = TextMuted, fontSize = 11.sp)
-                    Text("Informational use only. Headlines and keyword categories are not trading signals, forecasts, or recommendations. Verify important events with the original publisher.", color = TextMuted, fontSize = 11.sp, lineHeight = 17.sp)
+                    Text("Informational use only. Relevance scores are deterministic keyword matches. Observed event returns describe price movement after a timestamp; they do not prove causality or predict future prices.", color = TextMuted, fontSize = 11.sp, lineHeight = 17.sp)
                     Text("Feed status: ${statusText(state.status)}", color = TextMuted, fontSize = 10.sp)
                     state.lastUpdated?.let { Text("Last retrieved: ${formatDateTime(it)}", color = TextMuted, fontSize = 10.sp) }
                 }
@@ -435,6 +473,23 @@ private fun NewsCard(article: NewsItem, expanded: Boolean = false) {
                 Text("GDELT SEEN", color = TextMuted, fontSize = 8.sp, letterSpacing = 0.5.sp, fontWeight = FontWeight.Bold)
             }
             Text(article.title, color = TextMain, fontSize = 14.sp, lineHeight = 19.sp, fontWeight = FontWeight.SemiBold)
+            if (article.instrumentMatches.isNotEmpty()) {
+                Row(
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(5.dp)
+                ) {
+                    article.instrumentMatches.take(5).forEach { match ->
+                        Surface(color = Accent.copy(alpha = 0.10f), shape = RoundedCornerShape(5.dp)) {
+                            Text(
+                                "${match.symbol} · ${match.band}",
+                                color = Accent,
+                                fontSize = 8.sp,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+                }
+            }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                 Text("${article.source} • ${relativeTime(article.seenAt)}", color = TextMuted, fontSize = 9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                 Icon(Icons.Outlined.ChevronRight, contentDescription = "Open publisher article", tint = Accent, modifier = Modifier.size(18.dp))
