@@ -45,16 +45,18 @@ internal object NewsParser {
         return parsed.sortedByDescending { it.seenAt }
     }
 
-    internal fun normalizedSafeHttpsUrl(value: String): String? = try {
-        val uri = URI(value)
-        val host = uri.host ?: return null
-        if (!uri.scheme.equals("https", ignoreCase = true)) return null
-        if (uri.rawUserInfo != null || host.equals("localhost", ignoreCase = true)) return null
-        if (host.isBlank() || host.any { it.isWhitespace() }) return null
-        if (uri.port !in -1..65535) return null
-        uri.normalize().toASCIIString()
-    } catch (_: Exception) {
-        null
+    internal fun normalizedSafeHttpsUrl(value: String): String? {
+        return try {
+            val uri = URI(value)
+            val host = uri.host ?: return null
+            if (!uri.scheme.equals("https", ignoreCase = true)) return null
+            if (uri.rawUserInfo != null || host.equals("localhost", ignoreCase = true)) return null
+            if (host.isBlank() || host.any { it.isWhitespace() }) return null
+            if (uri.port !in -1..65535) return null
+            uri.normalize().toASCIIString()
+        } catch (_: Exception) {
+            null
+        }
     }
 
     internal fun classifyCategory(title: String): String {
