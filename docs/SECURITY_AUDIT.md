@@ -1,4 +1,4 @@
-# Trading News 0.5.0 — Static Security and Reliability Review
+# Trading News 0.6.0 — Static Security and Reliability Review
 
 **Review basis:** Android source, manifest, Gradle configuration, GDELT client/parser, local headline search, topic/instrument filters, local watchlist, WorkManager scheduling, notification path, official Forex Factory link/export screen, GitHub Actions build and release workflows. This is static source review plus automated unit tests, Android lint and CI compilation. It is not a penetration test, dynamic analysis, physical-device QA, legal opinion or security certification.
 
@@ -17,7 +17,9 @@
 | Parser bounds | GDELT parser examines at most 250 input records and retains at most 50 valid articles |
 | Publisher labels | GDELT publisher name derives from the validated article URL host |
 | Deduplication | Duplicate GDELT article URLs discarded |
-| News cache | Compact parsed fields only; invalid, future-dated or older-than-24-hour cache discarded |
+| News cache | Compact parsed fields only; maximum 50 headlines; each refresh replaces the previous cache; invalid, future-dated or older-than-24-hour cache discarded |
+| User data deletion | Cache-only clear and full local reset; full reset disables/cancels the unique WorkManager refresh and clears Trading News notifications |
+| Storage transparency | UI estimates cached metadata and preference-value bytes; excludes APK, Android/WorkManager system records and external-browser cache |
 | Search | On-device query matching over loaded headline titles, publisher hosts, symbol matches and relevance reasons |
 | Refresh control | 10-minute local cache and 60-second per-device manual refresh throttle |
 | Feed states | LIVE, CACHED, OFFLINE and CONNECTING are distinct |
@@ -29,15 +31,16 @@
 | CI supply chain | Third-party Actions pinned to immutable commit SHAs |
 | Data collection | No account, analytics SDK, advertising SDK or location collection |
 
-## 0.5.0 product changes
+## 0.6.0 product changes
 
 1. **Simplified economic calendar:** Removed the third-party Finance Calendar API, native snapshot parser, JSON cache, scheduled updater and related CI workflow.
 2. **Official Forex Factory:** Calendar screen opens the official Forex Factory calendar and source-hosted weekly JSON/ICS/CSV exports. It does not copy, scrape, download, parse or republish FEED data.
 3. **Headline search:** Added on-device search by headline title, publisher hostname, matched symbol and relevance reason.
 4. **Instrument filters:** Added instrument chips to the Headlines screen, using the user's locally selected watchlist.
 5. **Topic filters:** Retained Markets, Geopolitics, Energy, Crypto, Companies and Other categories.
-6. **Versioning:** Incremented Android versionCode and versionName to 5 / 0.5.0.
-7. **Release automation:** Simplified signed-release prerequisites to the four Android signing secrets and public repository visibility.
+6. **Privacy & storage controls:** Added local storage estimates, cache-only deletion and a confirmed full reset that disables background refresh and clears app notifications.
+7. **Versioning:** Incremented Android versionCode and versionName to 6 / 0.6.0.
+8. **Release automation:** Simplified signed-release prerequisites to the four Android signing secrets and public repository visibility.
 
 ## Actual functionality vs prepared modules
 
@@ -46,7 +49,7 @@
 - The local instrument watchlist is stored on the device and controls relevance matches and available instrument filters.
 - Forex Factory calendar and weekly export links open at the original provider; export content is not imported into the app.
 - The OHLC market-reaction calculator is a tested standalone utility. It is not connected to a licensed price-history provider and is not displayed as a measured-impact feature.
-- Background headline refresh and local Android notifications are best-effort WorkManager features, not instant remote push.
+- Background headline refresh and local Android notifications are best-effort WorkManager features, not instant remote push. Background refresh is disabled by default in this version.
 
 ## Known limitations and remaining work
 

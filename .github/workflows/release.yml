@@ -175,7 +175,7 @@ jobs:
           - Best-effort background refresh and optional local Android headline notifications.
           - Searchable news headlines with topic filters and a user-configurable instrument watchlist.
           - Official Forex Factory calendar and weekly JSON/ICS/CSV export links, served directly from the original host.
-          - Bounded HTTPS requests, URL validation, parser limits, and local cache controls.
+          - Bounded HTTPS requests, URL validation, parser limits, storage estimates, cache clearing and full local-data reset.
 
           ## Data limitations
           - Forex Factory calendar data is opened from the official publisher; the app does not scrape, cache or redistribute its FEED database.

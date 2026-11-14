@@ -1,4 +1,4 @@
-# Trading News — Android 0.5.0
+# Trading News — Android 0.6.0
 
 Trading News is a simple English-language Android app for following Forex and broader market news. It combines a live headline feed, fast on-device search, topic filters, a user-configurable instrument watchlist, background refresh, and direct access to the official Forex Factory calendar.
 
@@ -13,9 +13,14 @@ The source, automated tests, Android builds and release workflow are managed dir
 - **Custom watchlist:** choose the instruments that matter in Settings; the selection is stored locally on the device.
 - **Original publisher links:** headlines open the source article rather than copying full article text into the app.
 - **Feed status:** LIVE, CACHED, OFFLINE and CONNECTING states.
+- **Privacy & Storage controls:** approximate local-data size, cache-only clearing, and a confirmed full local-data reset that disables scheduled refresh and local alerts.
 - **Background refresh:** optional Android WorkManager refresh, best-effort every 15 minutes. Android battery controls can delay it.
 - **Local notifications:** optional Android notifications for new headlines matching the watchlist. These are not remote push messages.
 - **Forex Factory calendar:** opens the official calendar and its own weekly export links (JSON, ICS, CSV and XML). The calendar/export data stays hosted by Forex Factory.
+
+## Privacy and local storage
+
+The app retains at most 50 compact headline records and replaces the previous cache on refresh. Cache entries older than 24 hours are discarded when next read. The Settings screen estimates the size of cached headline metadata and saved preference values, supports clearing the news cache without changing the watchlist, and offers a confirmed full local-data reset. The estimate excludes the installed APK, Android/WorkManager system records and the external browser cache. Background refresh is off by default and must be enabled in Settings.
 
 ## How Forex Factory is handled
 
@@ -55,4 +60,4 @@ See [docs/RELEASE_SETUP.md](docs/RELEASE_SETUP.md) for one-time signing setup. T
 
 CI runs the GDELT parser/URL-safety tests, instrument relevance tests, OHLC calculator tests, Android lint and APK compilation. See [docs/SECURITY_AUDIT.md](docs/SECURITY_AUDIT.md) and [docs/DATA_SOURCES.md](docs/DATA_SOURCES.md).
 
-The included privacy policy remains a template and needs real operator details before public distribution. CI/static review is not physical-device QA, penetration testing, legal advice or security certification.
+The included privacy policy remains a template and needs real operator details before public distribution. Do not publish it as a final legal policy until every placeholder is completed and the disclosures are checked against the actual operator and target jurisdictions. CI/static review is not physical-device QA, penetration testing, legal advice or security certification.

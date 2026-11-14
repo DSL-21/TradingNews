@@ -20,7 +20,7 @@ When the user opens or refreshes the news feed, the app contacts the GDELT DOC 2
 
 ## Local storage and retention
 
-The app stores the most recent successful GDELT headline metadata response, its retrieval time, selected watchlist, refresh preferences, and alert preferences on the device. Cached news data older than 24 hours is discarded. [CONFIRM WHETHER CACHE REMOVAL ON APP UNINSTALL IS SUFFICIENT FOR YOUR RETENTION POLICY.]
+The app stores at most 50 compact GDELT headline metadata records and their retrieval time, the selected instrument watchlist, and refresh/alert preferences in Android app-private storage. A successful refresh replaces the previous headline cache; cached data older than 24 hours is discarded when next read. The app does not save full article bodies or images. The Settings screen provides an approximate byte count, a cache-only clear action, and a confirmed full local-data reset. Full reset clears app preferences and headline cache, cancels scheduled refresh, disables local alerts and clears Trading News notifications. Standard Android app uninstall removes the app's private data; it does not clear the browser's own history or cache.
 
 ## Notifications
 
