@@ -70,6 +70,6 @@
 
 The test suite covers:
 - valid GDELT article parsing, unsafe URL rejection, timestamp/cache handling, sorting, deduplication, bounded results and topic categories;
-- user watchlist parsing and deterministic instrument relevance;
+- user watchlist parsing and deterministic instrument relevance.
 
 A passing CI run establishes that tested source paths compile and tests pass. It does not prove every runtime path, device, Android version, network state, provider response or attack scenario is safe.
