@@ -196,7 +196,7 @@ class TradingNewsRepository(context: Context) {
 
     private fun fetchGdeltPayload(): String {
         val encodedQuery = URLEncoder.encode(MARKET_NEWS_QUERY, StandardCharsets.UTF_8.name())
-        val requestUrl = "${GDELT_DOC_URL}?query=${encodedQuery}&mode=artlist&format=json&maxrecords=50&sort=datedesc&timespan=24h"
+        val requestUrl = "${GDELT_DOC_URL}?query=${encodedQuery}&mode=ArtList&format=JSON&maxrecords=50&sort=DateDesc&timespan=24h"
         var connection: HttpURLConnection? = null
         try {
             connection = (URL(requestUrl).openConnection() as HttpURLConnection).apply {
