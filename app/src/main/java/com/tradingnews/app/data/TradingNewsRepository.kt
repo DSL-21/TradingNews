@@ -194,7 +194,7 @@ class TradingNewsRepository(context: Context) {
         const val KEY_LAST_FETCH_EPOCH = "last_fetch_epoch"
         const val GDELT_DOC_URL = "https://api.gdeltproject.org/api/v2/doc/doc"
         const val MARKET_NEWS_QUERY = """(inflation OR "central bank" OR "interest rate" OR "monetary policy" OR "stock market" OR forex OR currency OR bonds OR "oil price" OR OPEC OR "natural gas" OR gold OR war OR conflict OR sanctions OR tariffs OR election OR bitcoin OR cryptocurrency OR "company earnings" OR bankruptcy OR "banking crisis")"""
-        const val USER_AGENT = "TradingNews-Android/0.2.0"
+        const val USER_AGENT = "TradingNews-Android/0.3.0"
         const val CONNECT_TIMEOUT_MS = 10_000
         const val READ_TIMEOUT_MS = 15_000
         const val MAX_RESPONSE_BYTES = 2_000_000L
