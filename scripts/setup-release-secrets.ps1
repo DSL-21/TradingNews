@@ -6,6 +6,8 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$PasswordFile,
 
+    [string]$CalendarApiKeyFile,
+
     [string]$Repository = "DSL-21/TradingNews",
 
     [string]$KeyAlias = "tradingnews-release"
@@ -26,6 +28,9 @@ try {
     }
     if (-not (Test-Path -LiteralPath $PasswordFile -PathType Leaf)) {
         throw "Password file not found: $PasswordFile"
+    }
+    if ($CalendarApiKeyFile -and -not (Test-Path -LiteralPath $CalendarApiKeyFile -PathType Leaf)) {
+        throw "Calendar API key file not found: $CalendarApiKeyFile"
     }
 
     & $gh.Source auth status --hostname github.com 2>&1 | Out-Null
@@ -59,10 +64,26 @@ try {
     $password | & $gh.Source secret set ANDROID_KEY_PASSWORD --repo $Repository
     Assert-LastExitCode "setting ANDROID_KEY_PASSWORD"
 
+    if ($CalendarApiKeyFile) {
+        $calendarKey = [System.IO.File]::ReadAllText((Resolve-Path -LiteralPath $CalendarApiKeyFile).Path).Trim()
+        if ([string]::IsNullOrWhiteSpace($calendarKey)) {
+            throw "Calendar API key file is empty."
+        }
+        Write-Host "Setting FC_API_KEY..."
+        $calendarKey | & $gh.Source secret set FC_API_KEY --repo $Repository
+        Assert-LastExitCode "setting FC_API_KEY"
+        $calendarKey = $null
+    }
+
     Write-Host ""
-    Write-Host "All four Android signing secrets were submitted to $Repository."
-    Write-Host "No signing password or keystore content was printed by this script."
-    Write-Host "Run the 'Build Trading News APK' workflow on main to trigger a signed GitHub Release."
+    Write-Host "Android release signing secrets were submitted to $Repository."
+    if ($CalendarApiKeyFile) {
+        Write-Host "The Finance Calendar API key was also submitted as FC_API_KEY."
+    } else {
+        Write-Host "FC_API_KEY was not changed. Supply -CalendarApiKeyFile after obtaining your provider key to enable calendar updates."
+    }
+    Write-Host "No signing password, API key, or keystore content was printed by this script."
+    Write-Host "Run the 'Build Trading News APK' workflow on main to trigger the signed GitHub Release."
 }
 catch {
     Write-Error $_
