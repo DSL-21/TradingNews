@@ -8,7 +8,7 @@ This is a template, not a final legal document. Replace every bracketed field an
 
 ## Information processed
 
-The app does not require an account. It stores a local cache of headline metadata returned by GDELT DOC 2.0 using Android app-private SharedPreferences. The app does not request location, contacts, microphone, camera, or notification permissions. It does not include advertising or analytics SDKs in this release.
+The app does not require an account. It stores a compact local cache of public headline metadata and local preferences in Android app-private storage. Optional background refresh uses Android WorkManager. Optional local headline notifications require the Android notification permission on Android 13 and later. The app does not request location, contacts, microphone, or camera permissions. It does not include advertising or analytics SDKs in this version.
 
 ## Network requests
 
@@ -20,7 +20,11 @@ When the user opens or refreshes the news feed, the app contacts the GDELT DOC 2
 
 ## Local storage and retention
 
-The app stores the most recent successful GDELT headline response and the time it was retrieved on the device. The cache is replaced after a successful refresh. [CONFIRM WHETHER CACHE REMOVAL ON APP UNINSTALL IS SUFFICIENT FOR YOUR RETENTION POLICY.]
+The app stores the most recent successful GDELT headline metadata response, its retrieval time, refresh preferences, and alert preferences on the device. Cached news data older than 24 hours is discarded. [CONFIRM WHETHER CACHE REMOVAL ON APP UNINSTALL IS SUFFICIENT FOR YOUR RETENTION POLICY.]
+
+## Notifications
+
+Optional background notifications are generated locally on the device by WorkManager when the user enables alerts and grants notification permission where required. They are not remote Firebase push messages. Android battery and background-execution policies can delay or suppress them.
 
 ## Sharing and third parties
 
