@@ -80,8 +80,10 @@ class EconomicCalendarParserTest {
 
     @Test
     fun marksOldSnapshotsAsStale() {
+        val oldSnapshot = snapshot(event("old", "Old schedule", "2026-11-10", "low", null, "date"))
+            .put("fetched_at", "2026-11-10T00:00:00Z")
         val parsed = EconomicCalendarParser.parse(
-            snapshot(event("old", "Old schedule", "2026-11-10", "low", null, "date")),
+            oldSnapshot,
             now = Instant.parse("2026-11-14T12:00:00Z")
         )
         assertTrue(parsed.isStale)
