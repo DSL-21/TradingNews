@@ -574,7 +574,7 @@ private fun SettingsScreen(state: TradingNewsUiState, onRefresh: () -> Unit) {
             SettingsCard {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("About Trading News", color = TextMain, fontWeight = FontWeight.SemiBold)
-                    Text("Version 0.4.0 • Android", color = TextMuted, fontSize = 11.sp)
+                    Text("Version 0.5.0 • Android", color = TextMuted, fontSize = 11.sp)
                     Text("Informational use only. Relevance scores are deterministic keyword matches. Observed event returns describe price movement after a timestamp; they do not prove causality or predict future prices.", color = TextMuted, fontSize = 11.sp, lineHeight = 17.sp)
                     Text("Feed status: ${statusText(state.status)}", color = TextMuted, fontSize = 10.sp)
                     state.lastUpdated?.let { Text("Last retrieved: ${formatDateTime(it)}", color = TextMuted, fontSize = 10.sp) }
