@@ -1,61 +1,75 @@
-# One-time Android release setup
+# Direct Android APK release setup
 
-Trading News uses GitHub Actions for Android builds and signed GitHub Releases. No source ZIP or APK needs to be uploaded manually for normal code updates.
+Trading News is distributed as an open-source Android APK through GitHub Releases. **Google Play, a Google Play Console account and Google app-signing services are not required.** Android still requires an APK to be signed. The project uses its own locally generated PKCS12 key and verifies that every release uses the same certificate.
 
-## 1. Private Android release signing key
+## Why a new signing key is safe here
 
-A persistent PKCS12 release keystore has been generated for the repository.
+The previous `v0.2.0` download was a debug APK. Debug builds use the separate package ID `com.tradingnews.app.debug`; production releases use `com.tradingnews.app`. There is no existing production APK release signed with the missing key. The first production release can therefore start with a new persistent signing identity.
 
-- File: `TradingNews-release.p12`
-- Separate password file: `TradingNews-keystore-password.txt`
-- Key alias: `tradingnews-release`
-- Certificate SHA-256: `AF:65:0B:1F:30:4C:6C:D6:9F:42:BA:15:5E:B5:44:DF:EB:AF:A6:3F:6D:A6:1C:91:4B:78:C1:11:B0:AC:51:EA`
+Do not lose the new key after the first production release. Android will reject future updates if they are signed with a different certificate.
 
-The release workflow is pinned to the certificate fingerprint shown above. Use only the matching original keystore and password file supplied when this signing identity was created. First verify that both files are actually available and that the keystore certificate fingerprint matches the value above. Keep at least two encrypted backups. Never upload either file to GitHub, add them to the Android app or paste the password into chat/issues. Do not generate a replacement keystore unless you deliberately migrate the signing identity and update the expected certificate fingerprint; the replacement will not match existing app installations.
+## 1. Install prerequisites and authenticate
 
-## 2. Configure GitHub Actions secrets once
-
-Install GitHub CLI and authenticate with an account that has Admin access to this repository:
+On Windows, install GitHub CLI and Android Studio (which includes a Java runtime with `keytool`). Open PowerShell in your local clone of this repository and authenticate with an account that has repository Admin permission:
 
 ```powershell
 gh auth login --hostname github.com --git-protocol https --web
 ```
 
-Download `scripts/setup-release-secrets.ps1` from this repository. From PowerShell, run:
+## 2. Generate your new key and configure GitHub Secrets
+
+Run the helper from the repository root:
 
 ```powershell
-.\setup-release-secrets.ps1 `
-  -KeystorePath "$HOME\Downloads\TradingNews-release.p12" `
-  -PasswordFile "$HOME\Downloads\TradingNews-keystore-password.txt"
+.\scripts\setup-release-secrets.ps1
 ```
 
-The script sends the values through `gh secret set`; it does not print them. It configures these four repository secrets:
+The script:
 
-- `ANDROID_KEYSTORE_BASE64`
-- `ANDROID_KEYSTORE_PASSWORD`
-- `ANDROID_KEY_ALIAS`
-- `ANDROID_KEY_PASSWORD`
+1. Creates a new RSA-3072 PKCS12 signing keystore and a cryptographically random password if the two signing files do not already exist.
+2. Stores the private files outside the repository in `$HOME\TradingNewsSigning\`.
+3. Exports the public certificate and computes its SHA-256 fingerprint.
+4. Uses GitHub CLI to configure these five repository Actions secrets without printing the key or password:
+   - `ANDROID_KEYSTORE_BASE64`
+   - `ANDROID_KEYSTORE_PASSWORD`
+   - `ANDROID_KEY_ALIAS`
+   - `ANDROID_KEY_PASSWORD`
+   - `ANDROID_CERT_SHA256`
 
-No news/calendar provider API key is required for the current app configuration.
+The default alias is `tradingnews-release`. The helper refuses to store signing material inside the repository and will not overwrite a partial or existing key pair. If the files already exist, it verifies and reuses them. If the script reports that only one file exists, stop and recover the matching file; do not generate a replacement over it.
 
-## 3. Make the GitHub portfolio public
+## 3. Back up the signing identity
 
-The repository is currently Private. To use GitHub as a public portfolio and let employers inspect source/releases, the owner must deliberately switch it to Public under GitHub Settings → General → Danger Zone → Change repository visibility.
+After the script succeeds, securely back up both files:
 
-Before changing visibility, review current and historical commits, Actions logs, issues and releases to ensure no secrets or private material were ever committed. GitHub Actions secrets remain protected, but anything committed into Git history is not secret merely because the repository was private.
+- `$HOME\TradingNewsSigning\TradingNews-release.p12`
+- `$HOME\TradingNewsSigning\TradingNews-keystore-password.txt`
 
-The signed-release workflow checks that the repository is Public before publishing a public GitHub Release. The workflow does not change repository visibility automatically; only the repository owner should do that after a history/security review.
+Keep at least two encrypted backups in separate secure locations. Never commit them, upload them to GitHub, or send them through chat or public issues. The certificate fingerprint is not a password, but the private keystore and its password are critical secrets.
 
-## 4. First signed release
+## 4. Make the source repository public
 
-1. Configure the four signing secrets using the helper above.
-2. Change repository visibility to Public after reviewing its history.
-3. Open GitHub Actions → **Publish Trading News GitHub Release** → Run workflow, and select the `main` branch.
-4. Enter `RELEASE` exactly in the confirmation field and provide a short, accurate release summary.
-5. The workflow reruns unit tests and Android lint, builds the signed production APK, verifies the package name, version and registered signing-certificate fingerprint, then creates the versioned GitHub Release with the APK attached.
+The repository is currently Private. When you have reviewed the complete Git history, workflow logs, releases and repository contents for secrets or private material, change visibility in:
 
-Future source changes trigger the debug build/test workflow automatically. A production release is never published just because a commit was pushed: the owner starts the release workflow manually after deciding that the version is ready. No source ZIP or manual APK upload is needed.
+**GitHub → Settings → General → Danger Zone → Change repository visibility → Public**
 
-## Key-loss warning
+The source code and MIT licence are public; the signing key remains in your local encrypted backups and GitHub Actions secrets. The release workflow refuses to publish while the repository is private.
 
-The signing key is the application update identity. If it is lost, future updates cannot be signed as the same application identity using this key. Keep secure encrypted backups. Never commit the keystore or its password.
+## 5. Publish the first production APK
+
+The current app version is `0.7.0` (Android versionCode 7). Once the signing secrets are configured and the repository is Public:
+
+1. Open the repository's **Actions** tab.
+2. Select **Publish Trading News GitHub Release** and click **Run workflow** on the `main` branch.
+3. Enter `RELEASE` exactly in the confirmation field.
+4. Enter a short release summary and run the workflow.
+
+The workflow repeats unit tests and Android lint, builds the signed release APK, checks the package name and app version, verifies the configured signing-certificate fingerprint, calculates the APK SHA-256 checksum and publishes the APK as a versioned GitHub Release. It refuses to overwrite an existing tag.
+
+Normal source pushes run the debug build/test workflow and upload a temporary CI artifact. They do not publish production releases automatically.
+
+## Updating the app later
+
+Before every future production release, increment both `versionCode` and `versionName` in `app/build.gradle.kts`. Keep using the same keystore and password file. Never regenerate the signing identity for an ordinary app update.
+
+This is direct APK distribution, not a Google Play listing. Users install the APK themselves and may need to allow installation from their chosen browser or file manager.
