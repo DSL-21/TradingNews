@@ -96,6 +96,7 @@ class TradingNewsViewModel(application: Application) : AndroidViewModel(applicat
         refreshJob = null
         NewsWorkScheduler.resetLocalSettings(getApplication())
         repository.clearNewsCache()
+        getApplication<Application>().deleteSharedPreferences("trading_news_calendar_cache")
         NewsNotifications.clearAppNotifications(getApplication())
         uiState = TradingNewsUiState(
             status = FeedStatus.OFFLINE,
