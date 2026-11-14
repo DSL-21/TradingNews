@@ -15,6 +15,7 @@ android {
 
     signingConfigs {
         create("release") {
+            storeType = "PKCS12"
             if (!releaseStorePath.isNullOrBlank()) {
                 storeFile = file(releaseStorePath)
             }
