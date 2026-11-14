@@ -93,8 +93,8 @@ class TradingNewsViewModel(application: Application) : AndroidViewModel(applicat
     fun clearAllLocalData() {
         refreshJob?.cancel()
         refreshJob = null
-        repository.clearNewsCache()
         NewsWorkScheduler.resetLocalSettings(getApplication())
+        repository.clearNewsCache()
         NewsNotifications.clearAppNotifications(getApplication())
         uiState = TradingNewsUiState(
             status = FeedStatus.OFFLINE,
