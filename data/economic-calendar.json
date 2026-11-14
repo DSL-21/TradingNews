@@ -2,11 +2,14 @@
   "schema_version": 1,
   "fetched_at": "1970-01-01T00:00:00Z",
   "generated_at": null,
+  "from": null,
+  "to": null,
   "truncated": false,
-  "country_groups": [],
+  "more_on_paid_plans": 0,
   "attribution": {
-    "source": "Finance Calendar",
-    "url": "https://www.financecalendar.com/"
+    "source": "financecalendar.com",
+    "terms": "Use is governed by https://www.financecalendar.com/api/terms/ and applicable publisher source terms. This is an empty setup snapshot, not live calendar data.",
+    "docs": "https://www.financecalendar.com/api/"
   },
   "events": []
 }
