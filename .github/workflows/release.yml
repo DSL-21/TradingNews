@@ -173,25 +173,22 @@ jobs:
         run: |
           set -euo pipefail
           {
-            printf '# Trading News %s\\n\\n' "$RELEASE_VERSION"
-            printf '%s\\n\\n' "$RELEASE_NOTES"
-            printf '%s\\n' \\
-              '## Included functionality' \\
-              '- Live GDELT DOC 2.0 market and global-news headline discovery.' \\
-              '- Topic filters and a locally stored instrument watchlist.' \\
-              '- Live, cached, offline and connecting feed states.' \\
-              '- Optional best-effort WorkManager refresh and local Android notifications.' \\
-              '- Direct links to original publishers and the official Forex Factory calendar.' \\
-              '' \\
-              '## Data limitations' \\
-              '- Instrument matches are keyword relevance hints, not trading signals.' \\
-              '- Forex Factory calendar exports remain hosted by the original publisher; this app does not copy or redistribute FEED data.' \\
-              '- No broker or price feed is connected; instrument matches are keyword relevance hints, not measured price impact or trading signals.' \\
-              '' \\
-              '## Integrity' \\
-              "- Source commit: $SOURCE_SHA" \\
-              "- APK SHA-256: $APK_SHA256" \\
-              '- Signed Android APK for direct installation; not a Google Play listing.'
+            printf '# Trading News %s\n\n' "$RELEASE_VERSION"
+            printf '%s\n\n' "$RELEASE_NOTES"
+            printf '%s\n' '## Included functionality'
+            printf '%s\n' '- Live GDELT DOC 2.0 market and global-news headline discovery.'
+            printf '%s\n' '- Topic filters and a locally stored instrument watchlist.'
+            printf '%s\n' '- Live, cached, offline and connecting feed states.'
+            printf '%s\n' '- Optional best-effort WorkManager refresh and local Android notifications.'
+            printf '%s\n' '- Direct links to original publishers and the official Forex Factory calendar.'
+            printf '\n%s\n' '## Data limitations'
+            printf '%s\n' '- Instrument matches are keyword relevance hints, not trading signals.'
+            printf '%s\n' '- Forex Factory calendar exports remain hosted by the original publisher; this app does not copy or redistribute FEED data.'
+            printf '%s\n' '- No broker or price feed is connected; instrument matches are keyword relevance hints, not measured price impact or trading signals.'
+            printf '\n%s\n' '## Integrity'
+            printf '%s\n' "- Source commit: $SOURCE_SHA"
+            printf '%s\n' "- APK SHA-256: $APK_SHA256"
+            printf '%s\n' '- Signed Android APK for direct installation; not a Google Play listing.'
           } > release-notes.md
           gh release create "$RELEASE_TAG" "app/build/outputs/apk/release/app-release.apk#TradingNews-v$RELEASE_VERSION.apk" \
             --repo "$GH_REPO" --target "$SOURCE_SHA" --title "Trading News $RELEASE_VERSION" \
