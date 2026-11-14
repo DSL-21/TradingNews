@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "fetched_at": "1970-01-01T00:00:00Z",
+  "generated_at": null,
+  "truncated": false,
+  "country_groups": [],
+  "attribution": {
+    "source": "Finance Calendar",
+    "url": "https://www.financecalendar.com/"
+  },
+  "events": []
+}
