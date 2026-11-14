@@ -627,7 +627,7 @@ private fun SettingsScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("About Trading News", color = TextMain, fontWeight = FontWeight.SemiBold)
                     Text("Version ${BuildConfig.VERSION_NAME} • Android", color = TextMuted, fontSize = 11.sp)
-                    Text("Informational use only. Relevance scores are deterministic keyword matches. Observed event returns describe price movement after a timestamp; they do not prove causality or predict future prices.", color = TextMuted, fontSize = 11.sp, lineHeight = 17.sp)
+                    Text("Informational use only. Keyword matches are relevance hints, not measured price impact, predictions or trading advice.", color = TextMuted, fontSize = 11.sp, lineHeight = 17.sp)
                     Text("Feed status: ${statusText(state.status)}", color = TextMuted, fontSize = 10.sp)
                     state.lastUpdated?.let { Text("Last retrieved: ${formatDateTime(it)}", color = TextMuted, fontSize = 10.sp) }
                 }
