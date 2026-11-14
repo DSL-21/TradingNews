@@ -11,9 +11,16 @@ object NewsPreferences {
     private const val KEY_WATCHLIST = "instrument_watchlist"
 
     fun getWatchlist(context: Context): Set<String> {
-        val stored = context.applicationContext
+        val preferences = context.applicationContext
             .getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
-            .getStringSet(KEY_WATCHLIST, null)
+        val stored = try {
+            // SharedPreferences can contain values from an older/corrupted install.
+            // Copy the set immediately; Android warns against mutating its returned set.
+            preferences.getStringSet(KEY_WATCHLIST, null)?.toSet()
+        } catch (_: ClassCastException) {
+            preferences.edit().remove(KEY_WATCHLIST).apply()
+            null
+        }
 
         val allowed = InstrumentRelevanceEngine.supportedSymbols.toSet()
         return (stored ?: allowed).filter { it in allowed }.toSet()
