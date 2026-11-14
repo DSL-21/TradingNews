@@ -35,14 +35,12 @@ class NewsRefreshWorker(
             Result.success()
         } catch (cancelled: CancellationException) {
             throw cancelled
-        } catch (error: IOException) {
-            if (runAttemptCount >= MAX_RETRIES) Result.failure() else Result.retry()
+        } catch (_: IOException) {
+            // This is periodic work: retry with WorkManager backoff instead of
+            // imposing an arbitrary attempt limit on a temporary provider outage.
+            Result.retry()
         } catch (_: Exception) {
-            if (runAttemptCount >= MAX_RETRIES) Result.failure() else Result.retry()
+            Result.retry()
         }
-    }
-
-    private companion object {
-        const val MAX_RETRIES = 5
     }
 }
