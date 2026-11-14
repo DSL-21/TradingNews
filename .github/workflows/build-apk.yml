@@ -9,6 +9,7 @@ on:
       - '*.gradle.kts'
       - 'gradle.properties'
       - '.github/workflows/build-apk.yml'
+      - '.github/workflows/release.yml'
 
 concurrency:
   group: android-build-${{ github.ref }}
