@@ -423,13 +423,27 @@ private fun formatInstant(value: Instant): String =
     DateTimeFormatter.ofPattern("MMM d, HH:mm z", Locale.US).withZone(ZoneId.systemDefault()).format(value)
 
 private fun sourceCredit(sourceLicenseJson: String?, sourceRightsJson: String?): String? {
-    val raw = sourceLicenseJson ?: sourceRightsJson ?: return null
-    return runCatching {
-        val json = JSONObject(raw)
-        listOf("attribution", "notice").mapNotNull { key ->
-            json.optString(key).takeIf { it.isNotBlank() && it != "null" }
-        }.joinToString(" ")
-    }.getOrNull()?.takeIf { it.isNotBlank() }
+    val records = listOfNotNull(sourceLicenseJson, sourceRightsJson)
+    if (records.isEmpty()) return null
+    val parts = records.mapNotNull { raw ->
+        val json = runCatching { JSONObject(raw) }.getOrNull()
+        if (json == null) {
+            raw.takeIf { it.isNotBlank() }
+        } else {
+            listOf(
+                "attribution",
+                "notice",
+                "basis",
+                "access_basis",
+                "attribution_url",
+                "terms_url",
+                "url"
+            ).mapNotNull { key ->
+                json.optString(key).takeIf { it.isNotBlank() && it != "null" }
+            }.distinct().joinToString(" ").takeIf { it.isNotBlank() }
+        }
+    }
+    return parts.distinct().joinToString(" · ").takeIf { it.isNotBlank() }?.take(500)
 }
 
 private fun openHttpsUrl(context: Context, value: String) {
