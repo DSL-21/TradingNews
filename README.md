@@ -11,14 +11,15 @@ Trading News is an English-language, dark-mode Android application for market-re
 - **Economic calendar:** native upcoming-event list powered by the Finance Calendar Free Developer schedule API, cached as an attributed JSON snapshot in this repository.
 - **Calendar filters:** All, High, Medium and Low impact; event time shown in device-local time only when a confirmed UTC instant is supplied; date-only/uncertain times stay qualified.
 - **Source credits:** original publisher links and source-level licence/rights metadata are preserved and shown where supplied.
+- **Quota visibility:** the calendar shows actual daily/monthly Free Developer API usage from the provider response.
 - **Background refresh:** optional Android WorkManager refresh on a best-effort 15-minute schedule. Android battery controls may delay it.
 - **Local notifications:** optional local Android notifications for new headlines matched to the selected watchlist. These are not remote push messages.
 
 ## Economic calendar coverage
 
-The Free Developer schedule plan is limited to 100 successful responses per month, at most 10 per day, 20 event records per response, and a rolling UTC date window from today through six days ahead. Trading News makes three country-group requests once daily (about 90 per 30-day month), which fits the published quota.
+The Free Developer schedule plan is limited to 100 successful responses per month, at most 10 per day, 20 event records per response, and a rolling UTC date window from today through six days ahead. Trading News uses three country-group requests each UTC day (about 90 per 30-day month), within the published quota.
 
-The free schedule response does not include numeric forecasts, prior values or actual release figures. The app does not fabricate or infer them. The provider's truncation and paid-plan counters are displayed so the free feed is not presented as exhaustive.
+The free schedule response does not include numeric forecasts, prior values or actual release figures. The app does not fabricate or infer them. The provider's truncation and paid-plan counters are displayed so the feed is not presented as exhaustive.
 
 The repository owner must obtain a Finance Calendar API key and configure it once as GitHub Actions secret `FC_API_KEY`. The key is sent through the `X-API-Key` header by the scheduled workflow; it is never embedded in the APK or snapshot.
 
@@ -39,12 +40,12 @@ Forex Factory remains available as an official external calendar link only. Trad
 
 ## Automated GitHub workflow
 
-1. A push to main affecting Android app/Gradle source triggers **Build Trading News APK**: unit tests, Android lint and debug APK artifact.
-2. A successful build triggers **Publish Trading News GitHub Release**. Once the four Android signing secrets exist, it rebuilds/verifies a signed release APK and publishes a standard GitHub Release. No ZIP/APK upload is required.
+1. A push to main affecting Android app/Gradle source triggers **Build Trading News APK**: unit tests, Android lint and a debug APK artifact.
+2. A successful build triggers **Publish Trading News GitHub Release**. A signed public Release is created only after the repository is Public, all four Android signing secrets and `FC_API_KEY` are configured, and a recent attributed calendar snapshot is present. The workflow rebuilds/verifies the signed release APK and attaches it to a standard GitHub Release.
 3. A daily scheduled **Update licensed economic calendar** workflow calls the Finance Calendar API using the `FC_API_KEY` repository secret and commits an updated `data/economic-calendar.json` snapshot.
 4. **Test calendar publishing pipeline** validates updater Python tests and snapshot JSON without rebuilding the Android APK for every daily data update.
 
-One-time setup is documented in [docs/RELEASE_SETUP.md](docs/RELEASE_SETUP.md). The repository must be Public for Android installs to read the raw snapshot anonymously. It is currently private; change visibility only after reviewing the source tree and confirming no secrets have ever been committed.
+One-time setup is documented in [docs/RELEASE_SETUP.md](docs/RELEASE_SETUP.md). The repository must be Public for Android installs to read the raw snapshot anonymously. It is currently private; change visibility only after reviewing the source tree and commit history to ensure no secrets have been committed.
 
 ## Build and security
 
