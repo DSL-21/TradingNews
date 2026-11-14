@@ -21,10 +21,7 @@ The source, automated tests, Android builds and release workflow are managed dir
 
 Forex Factory provides a weekly export directly from its own calendar page:
 - Official calendar: https://www.forexfactory.com/calendar
-- Weekly JSON: https://nfs.faireconomy.media/ff_calendar_thisweek.json
-- Weekly ICS: https://nfs.faireconomy.media/ff_calendar_thisweek.ics
-- Weekly CSV: https://nfs.faireconomy.media/ff_calendar_thisweek.csv
-- Weekly XML: https://nfs.faireconomy.media/ff_calendar_thisweek.xml
+The calendar page provides current weekly JSON, ICS, CSV and XML export links. It adds a changing `version` query parameter to the files, so the app opens the original calendar page instead of hard-coding a potentially stale export URL.
 
 The export files are technically accessible over the internet. However, Forex Factory's notices explicitly prohibit copying, republication or redistribution of its calendar schedules and FEED database without prior written consent. Trading News therefore opens the original calendar/export URLs directly. It does not scrape, download, parse, cache or republish those events. This preserves access to the publisher's own current filters, time-zone options, impact levels and event details without creating an unofficial copy.
 
