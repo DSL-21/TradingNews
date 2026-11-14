@@ -4,7 +4,7 @@ This repository uses GitHub Actions for ongoing builds, signed releases and dail
 
 ## 1. Private Android release signing key
 
-A new persistent PKCS12 release keystore was created for the repository.
+A persistent PKCS12 release keystore has been generated for the repository.
 
 - File: `TradingNews-release.p12`
 - Separate password file: `TradingNews-keystore-password.txt`
@@ -16,11 +16,11 @@ Download both private files from the assistant response and store them securely 
 ## 2. Get a Finance Calendar Free Developer API key
 
 1. Open https://www.financecalendar.com/api/ and create/verify your developer account.
-2. Request/activate the **Free Developer** key according to the provider's current review process.
-3. Keep the key private. It must never be included in the Android source, APK, JSON snapshot, README, or Git commits.
+2. Request/activate the **Free Developer** key according to the provider's current email verification and account-key flow.
+3. Keep the key private. It must never be included in Android source, APK, JSON snapshot, README or Git commits.
 4. Save the exact key alone in a local UTF-8 text file outside the repository, for example `$HOME\Downloads\FinanceCalendar-api-key.txt`.
 
-Free Developer limits documented by the provider: 100 successful JSON responses/month, maximum 10/day, 20 event records/response, rolling UTC window today through +6 days, no pagination and no forecast/prior/actual values. This project uses three country-group calls/day (about 90/month). Check the provider's terms and quota before changing the schedule or query count.
+Free Developer limits documented by the provider: 100 successful JSON schedule responses/month, maximum 10/day, 20 event records/response, rolling UTC window today through +6 days, no pagination and no forecast/prior/actual values. This project uses three country-group calls/day (about 90/month). The updater stores the provider's actual quota object and the app shows daily/monthly usage. Check the provider's terms and quota before changing the schedule or query count.
 
 Provider docs: https://www.financecalendar.com/api/  
 Provider terms: https://www.financecalendar.com/api/terms/
@@ -49,18 +49,9 @@ The script sends secret values through `gh secret set`; it does not print them. 
 - `ANDROID_KEY_PASSWORD`
 - `FC_API_KEY`
 
-You can omit `-CalendarApiKeyFile` if you want to set up signed releases before obtaining the calendar key. The calendar remains empty until `FC_API_KEY` exists and the scheduled/dispatch updater succeeds.
+You can omit `-CalendarApiKeyFile` if you want to set up the release signing secrets before obtaining the calendar key. The signed public release will remain blocked until all five secrets exist.
 
-## 4. First signed release and first calendar snapshot
-
-1. Open GitHub Actions → **Build Trading News APK** → Run workflow on main.
-2. The workflow tests and builds the app. After a successful build, **Publish Trading News GitHub Release** checks the signing secrets, rebuilds the signed release APK and creates the standard `vMAJOR.MINOR.PATCH` GitHub Release.
-3. Open Actions → **Update licensed economic calendar** → Run workflow. The first successful run publishes the real schedule snapshot.
-4. Later snapshots update automatically each day at 00:20 UTC. No manual uploads or daily intervention are needed.
-
-If the release signing secrets are missing, CI still builds a debug APK artifact but skips the signed GitHub Release. A production-style installable APK is produced only after a persistent signing key is configured.
-
-## 5. Make the portfolio/app data publicly accessible
+## 4. Make the GitHub portfolio public
 
 The repository is currently Private. The installed Android app reads the calendar snapshot from:
 
@@ -68,7 +59,21 @@ https://raw.githubusercontent.com/DSL-21/TradingNews/main/data/economic-calendar
 
 Anonymous Android clients cannot fetch files from a private repository. To use GitHub as the public portfolio/distribution platform, the repository owner must deliberately switch it to Public in GitHub Settings → General → Danger Zone → Change repository visibility.
 
-Before changing visibility, review all current and historical commits, actions logs, issues and releases to ensure no secrets or private material were ever committed. GitHub Actions secrets remain protected, but anything committed into Git history is not secret merely because the repository was private.
+Before changing visibility, review all current and historical commits, Actions logs, issues and releases to ensure no secrets or private material were ever committed. GitHub Actions secrets remain protected, but anything committed into Git history is not secret merely because the repository was private.
+
+The signed-release workflow checks the repository's visibility and will not publish a public GitHub Release while the repository remains private.
+
+## 5. First calendar snapshot and first signed release
+
+1. After adding `FC_API_KEY`, open GitHub Actions → **Update licensed economic calendar** → Run workflow.
+2. Confirm the action succeeds and commits a real, recent `data/economic-calendar.json` snapshot containing provider attribution and Free Developer quota usage.
+3. After the repository is Public and all five secrets are configured, open Actions → **Build Trading News APK** → Run workflow.
+4. The workflow runs unit tests and Android lint, builds a debug artifact, then triggers **Publish Trading News GitHub Release**.
+5. The release workflow validates that the repository is Public and that the calendar snapshot is recent (maximum 36 hours), has provider attribution and has Free Developer quota usage. It then reruns tests/lint, builds the signed release APK, verifies its signature/package/version, and creates a standard GitHub Release.
+
+Later snapshots update automatically every day at 00:20 UTC. Later code changes push directly to GitHub, trigger builds and produce versioned releases after both keys and a fresh calendar snapshot are configured. No ZIP or APK upload is needed.
+
+If secrets, public visibility or a fresh calendar snapshot are missing, CI can still produce a debug artifact, but the signed public Release is deliberately skipped.
 
 ## Key-loss warning
 
