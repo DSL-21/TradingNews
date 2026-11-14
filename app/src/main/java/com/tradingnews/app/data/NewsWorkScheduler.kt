@@ -25,13 +25,23 @@ object NewsWorkScheduler {
 
     fun setAutoRefreshEnabled(context: Context, enabled: Boolean) {
         context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
-            .edit().putBoolean(KEY_AUTO_REFRESH, enabled).apply()
+            .edit()
+            .putBoolean(KEY_AUTO_REFRESH, enabled)
+            // Background alerts require the periodic refresh worker.
+            .apply {
+                if (!enabled) putBoolean(KEY_ALERTS_ENABLED, false)
+            }
+            .apply()
         if (enabled) schedule(context) else cancel(context)
     }
 
     fun setAlertsEnabled(context: Context, enabled: Boolean) {
         context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
             .edit().putBoolean(KEY_ALERTS_ENABLED, enabled).apply()
+        // If enabled programmatically while refresh is off, ensure delivery can run.
+        if (enabled && !isAutoRefreshEnabled(context)) {
+            setAutoRefreshEnabled(context, true)
+        }
     }
 
     fun ensureScheduled(context: Context) {
