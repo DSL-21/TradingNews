@@ -24,13 +24,15 @@ class TradingNewsRepository(context: Context) {
     private val preferences = appContext.getSharedPreferences(CACHE_PREFS, Context.MODE_PRIVATE)
 
     fun getStorageInfo(): NewsStorageInfo {
-        val payload = preferences.getString(KEY_PAYLOAD, null)
-        val retrievedAtValue = preferences.getString(KEY_RETRIEVED_AT, null)
-        val lastFetchEpoch = preferences.getLong(KEY_LAST_FETCH_EPOCH, 0L)
+        val payload = safeString(KEY_PAYLOAD)
+        val retrievedAtValue = safeString(KEY_RETRIEVED_AT)
+        val lastFetchEpoch = safeLong(KEY_LAST_FETCH_EPOCH)
+        val cacheGeneration = safeLong(KEY_CACHE_GENERATION)
         val cacheBytes = (
             (payload?.toByteArray(StandardCharsets.UTF_8)?.size ?: 0) +
                 (retrievedAtValue?.toByteArray(StandardCharsets.UTF_8)?.size ?: 0) +
-                if (lastFetchEpoch > 0L) 8 else 0
+                (if (lastFetchEpoch > 0L) 8 else 0) +
+                (if (cacheGeneration > 0L) 8 else 0)
             ).toLong()
         val count = payload?.let {
             runCatching {
@@ -52,7 +54,7 @@ class TradingNewsRepository(context: Context) {
      */
     fun clearNewsCache() {
         synchronized(CACHE_MUTATION_LOCK) {
-            val current = preferences.getLong(KEY_CACHE_GENERATION, 0L)
+            val current = safeLong(KEY_CACHE_GENERATION)
             val next = if (current == Long.MAX_VALUE) 1L else current + 1L
             preferences.edit()
                 .clear()
@@ -62,8 +64,14 @@ class TradingNewsRepository(context: Context) {
     }
 
     fun getCacheGeneration(): Long = synchronized(CACHE_MUTATION_LOCK) {
-        preferences.getLong(KEY_CACHE_GENERATION, 0L)
+        safeLong(KEY_CACHE_GENERATION)
     }
+
+    private fun safeString(key: String): String? =
+        runCatching { preferences.getString(key, null) }.getOrNull()
+
+    private fun safeLong(key: String): Long =
+        runCatching { preferences.getLong(key, 0L) }.getOrDefault(0L)
 
     private fun estimatePreferenceBytes(values: Map<String, *>): Long =
         values.entries.sumOf { (key, value) ->
@@ -80,8 +88,8 @@ class TradingNewsRepository(context: Context) {
             }
         }
 
-    fun readCachedFeed(): NewsFeed? {
-        return try {
+    fun readCachedFeed(): NewsFeed? = synchronized(CACHE_MUTATION_LOCK) {
+        try {
             val payload = preferences.getString(KEY_PAYLOAD, null) ?: return null
             val retrievedAtValue = preferences.getString(KEY_RETRIEVED_AT, null)
             val retrievedAt = retrievedAtValue?.let(::parseInstant)
@@ -116,7 +124,7 @@ class TradingNewsRepository(context: Context) {
         val generationAtStart = getCacheGeneration()
         val cached = readCachedFeed()
         val now = Instant.now()
-        val lastFetch = preferences.getLong(KEY_LAST_FETCH_EPOCH, 0L)
+        val lastFetch = safeLong(KEY_LAST_FETCH_EPOCH)
         val secondsSinceLastFetch = now.epochSecond - lastFetch
 
         if (cached != null && !forceRefresh && Duration.between(cached.retrievedAt, now).seconds in 0 until CACHE_TTL_SECONDS) {
@@ -133,7 +141,7 @@ class TradingNewsRepository(context: Context) {
         }
 
         val fetchMayProceed = synchronized(CACHE_MUTATION_LOCK) {
-            if (preferences.getLong(KEY_CACHE_GENERATION, 0L) != generationAtStart) {
+            if (safeLong(KEY_CACHE_GENERATION) != generationAtStart) {
                 false
             } else {
                 preferences.edit().putLong(KEY_LAST_FETCH_EPOCH, now.epochSecond).apply()
@@ -162,7 +170,7 @@ class TradingNewsRepository(context: Context) {
             // A cancelled foreground refresh must not recreate data after a user-triggered clear.
             currentCoroutineContext().ensureActive()
             synchronized(CACHE_MUTATION_LOCK) {
-                if (preferences.getLong(KEY_CACHE_GENERATION, 0L) == generationAtStart) {
+                if (safeLong(KEY_CACHE_GENERATION) == generationAtStart) {
                     preferences.edit()
                         .putString(KEY_PAYLOAD, compactCache)
                         .putString(KEY_RETRIEVED_AT, retrievedAt.toString())
@@ -266,10 +274,12 @@ class TradingNewsRepository(context: Context) {
     }
 
     private fun clearCache() {
-        preferences.edit()
-            .remove(KEY_PAYLOAD)
-            .remove(KEY_RETRIEVED_AT)
-            .apply()
+        synchronized(CACHE_MUTATION_LOCK) {
+            preferences.edit()
+                .remove(KEY_PAYLOAD)
+                .remove(KEY_RETRIEVED_AT)
+                .apply()
+        }
     }
 
     private fun parseInstant(value: String): Instant? = runCatching { Instant.parse(value) }.getOrNull()
