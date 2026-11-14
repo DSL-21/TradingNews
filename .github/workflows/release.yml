@@ -22,10 +22,29 @@ concurrency:
 jobs:
   publish:
     name: Test, sign, and publish APK
-    if: ${{ github.event.inputs.confirm_release == 'RELEASE' }}
     runs-on: ubuntu-latest
     timeout-minutes: 50
     steps:
+      - name: Validate release confirmation and source branch
+        env:
+          CONFIRM_RELEASE: ${{ github.event.inputs.confirm_release }}
+          RELEASE_NOTES: ${{ github.event.inputs.release_notes }}
+          GH_REF: ${{ github.ref }}
+        run: |
+          set -euo pipefail
+          if [[ "$CONFIRM_RELEASE" != "RELEASE" ]]; then
+            echo "::error::Enter RELEASE exactly to confirm publishing."
+            exit 1
+          fi
+          if [[ "$GH_REF" != "refs/heads/main" ]]; then
+            echo "::error::Production releases must be created from main."
+            exit 1
+          fi
+          if [[ -z "$RELEASE_NOTES" ]]; then
+            echo "::error::Release notes must not be empty."
+            exit 1
+          fi
+
       - name: Checkout selected source revision
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
@@ -182,9 +201,3 @@ jobs:
           if [[ -n "${ANDROID_KEYSTORE_PATH:-}" && -f "$ANDROID_KEYSTORE_PATH" ]]; then
             shred -u "$ANDROID_KEYSTORE_PATH" || rm -f "$ANDROID_KEYSTORE_PATH"
           fi
-
-      - name: Reject missing confirmation phrase
-        if: ${{ github.event.inputs.confirm_release != 'RELEASE' }}
-        run: |
-          echo "::error::Enter RELEASE exactly to confirm publishing."
-          exit 1
