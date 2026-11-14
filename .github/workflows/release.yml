@@ -149,7 +149,9 @@ jobs:
           test -s "$APK"
           VERIFY_OUTPUT="$("$APKSIGNER" verify --verbose --print-certs "$APK" 2>&1)"
           printf '%s\n' "$VERIFY_OUTPUT"
-          if ! grep -Fqi "$EXPECTED_CERT_SHA256" <<< "$VERIFY_OUTPUT"; then
+          EXPECTED_NORMALIZED="$(printf '%s' "$EXPECTED_CERT_SHA256" | tr -d ':' | tr '[:upper:]' '[:lower:]')"
+          ACTUAL_NORMALIZED="$(printf '%s\n' "$VERIFY_OUTPUT" | awk -F': ' '/Signer #1 certificate SHA-256 digest:/ { print $2; exit }' | tr -d ':' | tr '[:upper:]' '[:lower:]')"
+          if [[ -z "$ACTUAL_NORMALIZED" || "$ACTUAL_NORMALIZED" != "$EXPECTED_NORMALIZED" ]]; then
             echo "::error::Unexpected Android release signing certificate."
             exit 1
           fi
@@ -170,28 +172,27 @@ jobs:
           SOURCE_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
-          cat > release-notes.md <<EOF
-          # Trading News $RELEASE_VERSION
-
-          $RELEASE_NOTES
-
-          ## Included functionality
-          - Live GDELT DOC 2.0 market and global-news headline discovery.
-          - Topic filters and a locally stored instrument watchlist.
-          - Live, cached, offline and connecting feed states.
-          - Optional best-effort WorkManager refresh and local Android notifications.
-          - Direct links to original publishers and the official Forex Factory calendar.
-
-          ## Data limitations
-          - Instrument matches are keyword relevance hints, not trading signals.
-          - Forex Factory calendar exports remain hosted by the original publisher; this app does not copy or redistribute FEED data.
-          - No broker or price feed is connected; instrument matches are keyword relevance hints, not measured price impact or trading signals.
-
-          ## Integrity
-          - Source commit: $SOURCE_SHA
-          - APK SHA-256: $APK_SHA256
-          - Signed Android APK for direct installation; not a Google Play listing.
-          EOF
+          {
+            printf '# Trading News %s\\n\\n' "$RELEASE_VERSION"
+            printf '%s\\n\\n' "$RELEASE_NOTES"
+            printf '%s\\n' \\
+              '## Included functionality' \\
+              '- Live GDELT DOC 2.0 market and global-news headline discovery.' \\
+              '- Topic filters and a locally stored instrument watchlist.' \\
+              '- Live, cached, offline and connecting feed states.' \\
+              '- Optional best-effort WorkManager refresh and local Android notifications.' \\
+              '- Direct links to original publishers and the official Forex Factory calendar.' \\
+              '' \\
+              '## Data limitations' \\
+              '- Instrument matches are keyword relevance hints, not trading signals.' \\
+              '- Forex Factory calendar exports remain hosted by the original publisher; this app does not copy or redistribute FEED data.' \\
+              '- No broker or price feed is connected; instrument matches are keyword relevance hints, not measured price impact or trading signals.' \\
+              '' \\
+              '## Integrity' \\
+              "- Source commit: $SOURCE_SHA" \\
+              "- APK SHA-256: $APK_SHA256" \\
+              '- Signed Android APK for direct installation; not a Google Play listing.'
+          } > release-notes.md
           gh release create "$RELEASE_TAG" "app/build/outputs/apk/release/app-release.apk#TradingNews-v$RELEASE_VERSION.apk" \
             --repo "$GH_REPO" --target "$SOURCE_SHA" --title "Trading News $RELEASE_VERSION" \
             --notes-file release-notes.md
