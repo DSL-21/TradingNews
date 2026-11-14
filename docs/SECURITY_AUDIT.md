@@ -59,7 +59,7 @@
 
 1. A Finance Calendar Free Developer API key must be obtained by the repository owner and stored as GitHub Actions secret `FC_API_KEY`. The API updater does not run with real events until that secret exists and the first successful schedule fetch completes.
 2. The repository must be Public for the installed app to fetch the raw JSON snapshot anonymously. A private repository cannot serve the configured raw URL to arbitrary Android users without a backend or an embedded credential; embedding a GitHub token is not permitted. The signed-release workflow checks public visibility and blocks the release if the repository is Private.
-3. Four Android signing secrets must be configured before the signed-release job can publish: ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS and ANDROID_KEY_PASSWORD.
+3. Four Android signing secrets plus `FC_API_KEY` must be configured before the signed-release job can publish: ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD and FC_API_KEY.
 4. The private signing key and password must be securely backed up by the owner. Do not commit them.
 
 ## Remaining risks and release requirements
