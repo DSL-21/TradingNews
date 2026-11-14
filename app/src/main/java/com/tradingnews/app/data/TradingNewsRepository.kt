@@ -30,7 +30,7 @@ class TradingNewsRepository(context: Context) {
             ).toLong()
         val count = payload?.let {
             runCatching {
-                JSONObject(it).optJSONArray("articles")?.length()?.coerceAtMost(MAX_ARTICLES) ?: 0
+                JSONObject(it).optJSONArray("articles")?.length()?.coerceAtMost(MAX_CACHE_ARTICLE_COUNT) ?: 0
             }.getOrDefault(0)
         } ?: 0
         val settings = appContext.getSharedPreferences(NewsWorkScheduler.PREFERENCES, Context.MODE_PRIVATE).all
@@ -243,6 +243,7 @@ class TradingNewsRepository(context: Context) {
         const val USER_AGENT = "TradingNews-Android/0.6.0"
         const val CONNECT_TIMEOUT_MS = 10_000
         const val READ_TIMEOUT_MS = 15_000
+        const val MAX_CACHE_ARTICLE_COUNT = 50
         const val MAX_RESPONSE_BYTES = 2_000_000L
         const val MAX_RESPONSE_CHARS = 2_000_000
         const val CACHE_TTL_SECONDS = 10 * 60L
