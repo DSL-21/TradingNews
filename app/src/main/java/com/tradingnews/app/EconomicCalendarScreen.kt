@@ -42,6 +42,7 @@ private const val FOREX_FACTORY_CALENDAR = "https://www.forexfactory.com/calenda
 private const val FOREX_FACTORY_JSON = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
 private const val FOREX_FACTORY_ICS = "https://nfs.faireconomy.media/ff_calendar_thisweek.ics"
 private const val FOREX_FACTORY_CSV = "https://nfs.faireconomy.media/ff_calendar_thisweek.csv"
+private const val FOREX_FACTORY_XML = "https://nfs.faireconomy.media/ff_calendar_thisweek.xml"
 
 private val CalendarBackground = Color(0xFF0B1017)
 private val CalendarPanel = Color(0xFF121B25)
@@ -173,6 +174,7 @@ fun EconomicCalendarScreen() {
                     ExportLink("JSON", "Structured weekly schedule", FOREX_FACTORY_JSON, context)
                     ExportLink("ICS", "Add the weekly schedule to a calendar app", FOREX_FACTORY_ICS, context)
                     ExportLink("CSV", "Open the weekly schedule as a table", FOREX_FACTORY_CSV, context)
+                    ExportLink("XML", "Structured weekly schedule", FOREX_FACTORY_XML, context)
                 }
             }
         }
