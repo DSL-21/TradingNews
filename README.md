@@ -1,48 +1,49 @@
-# Trading News — Android 0.2.0
+# Trading News — Android 0.3.0
 
-Trading News is an English-language, dark-mode Android market-headline reader. Source files are committed directly to this repository.
+Trading News is an English-language, dark-mode Android app for discovering market-related news headlines and opening the official Forex Factory calendar.
 
-## Current functionality
+## Working functionality
 
-- Live GDELT DOC 2.0 headline discovery over the previous 24 hours.
-- Publisher hostname and the time GDELT first saw the article (`seendate`); this is not necessarily the publisher's publication time.
-- Direct HTTPS links to original publisher articles.
-- Topic filters for Markets, Geopolitics, Energy, Crypto, Companies, and Other.
-- Explicit LIVE, CACHED, OFFLINE, and CONNECTING feed states.
-- Local compact cache, 10-minute cache lifetime, 24-hour maximum cache age, and 60-second manual-refresh throttle.
-- Bounded response size and parser work; no demo headlines, fabricated economic events, or heuristic market-impact score.
+- **Live news discovery:** GDELT DOC 2.0 article-list queries for a rolling 24-hour window.
+- **Publisher links:** the app displays a headline, publisher host, GDELT-seen timestamp, and an HTTPS link to the original publisher. It does not republish full article bodies or images.
+- **Feed reliability:** explicit LIVE, CACHED, OFFLINE, and CONNECTING states; bounded response parsing; compact local cache; 10-minute cache lifetime; 24-hour maximum cache age; 60-second per-device manual-refresh throttle.
+- **Topic filters:** Markets, Geopolitics, Energy, Crypto, Companies, and Other. These are keyword-based navigation labels.
+- **Instrument relevance:** deterministic keyword matches for supported forex pairs, metals, indices, oil, and crypto symbols. Scores are relevance hints only, not impact ratings, sentiment, price direction, or trading signals.
+- **Background refresh:** optional WorkManager refresh on a best-effort 15-minute schedule. Android battery controls and Doze may delay it.
+- **Local notifications:** optional local Android notifications for newly discovered headlines with keyword matches. This is not Firebase/remote push and requires the user's notification permission on Android 13+.
 
-## Latest standard GitHub Release
+## Economic calendar
 
-**[Trading News 0.2.0 — open Releases and download APK](https://github.com/DSL-21/TradingNews/releases/tag/v0.2.0)**
-
-This is a standard GitHub Release, not a pre-release. The attached `app-debug.apk` is a debug variant signed with a temporary runner debug certificate. It is installable for testing, but it is not a production-signed Google Play package. A persistent private signing key must be configured as protected GitHub Actions secrets before public-store distribution.
-
-## Forex Factory calendar
-
-The Calendar tab opens the official website:
+The Calendar screen opens the official Forex Factory calendar and Notices pages:
 - https://www.forexfactory.com/calendar
 - https://www.forexfactory.com/notices
 
-The app does not scrape, download, cache, copy, or republish Forex Factory calendar schedules. Native event data, forecasts, previous/actual values, impact levels, and in-app reminders must not be added until the operator has written permission covering public mobile-app display and redistribution from Fair Economy, Inc.
+The app does not scrape, download, cache, copy, or republish Forex Factory calendar schedules. Native event rows, forecast/previous/actual values, impact levels, and in-app event reminders are not enabled. They require written permission covering public mobile-app display and redistribution from Fair Economy, Inc., or a different provider whose licence explicitly permits these uses.
 
-## News source and attribution
+## Market reaction analysis
 
-GDELT DOC 2.0 is used for headline discovery. The app links to GDELT project information from Settings and links each headline to its original publisher. Article bodies are not republished. Topic labels are keyword-based navigation aids only, not validated impact ratings, trading signals, price-direction predictions, or recommendations.
+A pure calculation module can calculate observed post-event returns from real OHLC minute bars supplied to it. It is **not connected to a live price/history provider or the app UI** in 0.3.0. The application does not currently calculate or display measured market impact. No synthetic price bars or fabricated impact figures are used.
+
+## Data sources
+
+GDELT DOC 2.0 is queried directly from each device. The app attributes the GDELT Project in Settings and links headlines to original publisher pages. GDELT coverage is not exhaustive, and its search results may be duplicated, incomplete, late, or irrelevant.
 
 - GDELT DOC API overview: https://blog.gdeltproject.org/gdelt-doc-2-0-api-debuts/
 - GDELT project and terms: https://www.gdeltproject.org/about.html
 
-GDELT has service limits. Each device currently queries the provider directly. A shared monitored backend, central cache, and abuse/rate controls are recommended before scaling to a larger public audience.
+For broad public distribution, a shared backend/cache with monitoring, abuse controls, and request-rate management is recommended. The current client-side cache/throttle is per device and is not a substitute for server-side rate controls.
 
-## Build and test
+## Build and tests
 
-Open **Actions** and choose **Build Trading News APK** to run the continuous-integration workflow. It executes parser unit tests, Android lint, and an APK build. The **Release Trading News** workflow runs tests, lint, both Android variants, APK signature/package verification, then publishes a standard GitHub Release.
+Open **Actions** and select **Build Trading News APK**. CI runs:
+- unit tests for news parsing and URL validation,
+- tests for instrument relevance mapping,
+- tests for observed price-reaction calculations,
+- Android lint,
+- debug APK compilation.
 
-GitHub Actions uses pinned action commit SHAs. Dependabot checks Gradle and GitHub Actions dependencies weekly.
+The resulting APK is a **debug build** signed with a temporary runner debug certificate. It is suitable for installation and testing, not a production-signed Google Play release. Production distribution requires a protected persistent signing key, complete privacy policy/support details, store declarations, device QA, dependency assessment, and external mobile security review.
 
-## Security review and remaining work
+## Security review and privacy
 
-See [docs/SECURITY_AUDIT.md](docs/SECURITY_AUDIT.md).
-
-The static review and automated tests are not a penetration test, dynamic analysis, professional security certification, or device QA. Before public app-store distribution, complete the privacy policy, support contact details, persistent release signing, emulator/device testing, dependency vulnerability assessment, and an external mobile security review.
+See the security audit and privacy-policy template in the docs directory. The static review and CI tests are not a penetration test, dynamic analysis, device QA, legal opinion, or security certification. Complete the privacy template before public distribution.
