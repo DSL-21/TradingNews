@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tradingnews.app.data.EconomicCalendarRepository
 import com.tradingnews.app.data.EconomicCalendarSnapshot
+import com.tradingnews.app.data.FreeDeveloperUsage
 import com.tradingnews.app.data.EconomicEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -131,6 +132,9 @@ fun EconomicCalendarScreen() {
 
         snapshot?.let { current ->
             item { CalendarStatusCard(current) }
+            current.freeDeveloperUsage?.let { usage ->
+                item { FreeDeveloperUsageCard(usage) }
+            }
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
@@ -175,7 +179,7 @@ fun EconomicCalendarScreen() {
             item {
                 AttributionCard(
                     name = current.attributionName,
-                    docsUrl = current.attributionDocsUrl,
+                    attributionUrl = current.attributionUrl,
                     terms = current.attributionTerms
                 )
             }
@@ -296,7 +300,52 @@ private fun EconomicEventCard(event: EconomicEvent) {
 }
 
 @Composable
-private fun AttributionCard(name: String, docsUrl: String, terms: String) {
+private fun FreeDeveloperUsageCard(usage: FreeDeveloperUsage) {
+    val context = LocalContext.current
+    Card(
+        colors = CardDefaults.cardColors(containerColor = CalendarPanel),
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text("FREE DEVELOPER API USAGE", color = CalendarAccent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+            Text(
+                "Today: ${usage.usedToday}/${usage.dailyLimit} requests · ${usage.remainingToday} remaining",
+                color = Color(0xFFE8F0F4),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                "This month: ${usage.usedThisMonth}/${usage.monthlyLimit} requests · ${usage.remainingThisMonth} remaining",
+                color = CalendarMuted,
+                fontSize = 10.sp
+            )
+            if (usage.windowFrom != null && usage.windowTo != null) {
+                Text(
+                    "API window: ${usage.windowFrom} – ${usage.windowTo} ${usage.windowTimezone ?: "UTC"}",
+                    color = CalendarMuted,
+                    fontSize = 10.sp
+                )
+            }
+            usage.dailyResetsAt?.let {
+                Text("Daily quota resets: ${formatInstant(it)}", color = CalendarMuted, fontSize = 9.sp)
+            }
+            if (!usage.upgradeUrl.isNullOrBlank()) {
+                TextButton(
+                    onClick = { openHttpsUrl(context, usage.upgradeUrl) },
+                    contentPadding = PaddingValues(horizontal = 0.dp, vertical = 0.dp)
+                ) {
+                    Text("Provider plan and access details", color = CalendarAccent, fontSize = 10.sp)
+                    Spacer(Modifier.size(4.dp))
+                    Icon(Icons.Outlined.OpenInNew, contentDescription = null, tint = CalendarAccent, modifier = Modifier.size(12.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AttributionCard(name: String, attributionUrl: String, terms: String) {
     val context = LocalContext.current
     Card(
         colors = CardDefaults.cardColors(containerColor = CalendarPanel),
@@ -312,12 +361,12 @@ private fun AttributionCard(name: String, docsUrl: String, terms: String) {
                 lineHeight = 14.sp
             )
             Text(terms.take(500), color = CalendarMuted, fontSize = 9.sp, lineHeight = 13.sp)
-            TextButton(onClick = { openHttpsUrl(context, "https://www.financecalendar.com/") }, contentPadding = PaddingValues(horizontal = 0.dp, vertical = 0.dp)) {
+            TextButton(onClick = { openHttpsUrl(context, attributionUrl) }, contentPadding = PaddingValues(horizontal = 0.dp, vertical = 0.dp)) {
                 Text("FinanceCalendar.com", color = CalendarAccent)
                 Spacer(Modifier.size(5.dp))
                 Icon(Icons.Outlined.OpenInNew, contentDescription = null, tint = CalendarAccent, modifier = Modifier.size(13.dp))
             }
-            TextButton(onClick = { openHttpsUrl(context, docsUrl) }, contentPadding = PaddingValues(horizontal = 0.dp, vertical = 0.dp)) {
+            TextButton(onClick = { openHttpsUrl(context, "https://www.financecalendar.com/api/") }, contentPadding = PaddingValues(horizontal = 0.dp, vertical = 0.dp)) {
                 Text("API documentation", color = CalendarAccent)
             }
         }
