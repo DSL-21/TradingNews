@@ -1,6 +1,7 @@
 package com.tradingnews.app.data
 
 import android.content.Context
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -30,6 +31,7 @@ class EconomicCalendarRepository(context: Context) {
                 .apply()
             parsed
         } catch (error: Exception) {
+            if (error is CancellationException) throw error
             if (cached != null) {
                 cached.copy(isStale = true)
             } else {
