@@ -441,6 +441,7 @@ private fun SettingsScreen(
     ) { granted ->
         alertsEnabled = granted
         NewsWorkScheduler.setAlertsEnabled(context, granted)
+        storageRevision += 1
     }
 
     LazyColumn(
@@ -467,6 +468,7 @@ private fun SettingsScreen(
                                 autoRefresh = enabled
                                 NewsWorkScheduler.setAutoRefreshEnabled(context, enabled)
                                 if (!enabled) alertsEnabled = false
+                                storageRevision += 1
                             }
                         )
                     }
@@ -494,6 +496,7 @@ private fun SettingsScreen(
                                 if (!enabled) {
                                     alertsEnabled = false
                                     NewsWorkScheduler.setAlertsEnabled(context, false)
+                                    storageRevision += 1
                                 } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                                     ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
                                 ) {
@@ -501,6 +504,7 @@ private fun SettingsScreen(
                                 } else {
                                     alertsEnabled = true
                                     NewsWorkScheduler.setAlertsEnabled(context, true)
+                                    storageRevision += 1
                                 }
                             }
                         )
@@ -535,6 +539,7 @@ private fun SettingsScreen(
                                     }
                                     selectedInstruments = updated
                                     NewsPreferences.setWatchlist(context, updated)
+                                    storageRevision += 1
                                     onRefresh()
                                 },
                                 label = { Text(symbol, fontSize = 9.sp) }
@@ -549,6 +554,7 @@ private fun SettingsScreen(
                             onClick = {
                                 selectedInstruments = InstrumentRelevanceEngine.supportedSymbols.toSet()
                                 NewsPreferences.setWatchlist(context, selectedInstruments)
+                                storageRevision += 1
                                 onRefresh()
                             }
                         ) { Text("Select all", color = Accent, fontSize = 11.sp) }
