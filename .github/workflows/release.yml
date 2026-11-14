@@ -25,14 +25,13 @@ jobs:
           STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-          FC_API_KEY: ${{ secrets.FC_API_KEY }}
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          if [[ -z "$KEYSTORE" || -z "$STORE_PASSWORD" || -z "$KEY_ALIAS" || -z "$KEY_PASSWORD" || -z "$FC_API_KEY" ]]; then
+          if [[ -z "$KEYSTORE" || -z "$STORE_PASSWORD" || -z "$KEY_ALIAS" || -z "$KEY_PASSWORD" ]]; then
             echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Signed release is waiting for the four Android signing secrets and FC_API_KEY."
+            echo "::notice::Signed release is waiting for the four Android signing secrets."
             exit 0
           fi
           VISIBILITY="$(gh api "repos/$GH_REPO" --jq '.visibility')"
@@ -42,7 +41,7 @@ jobs:
             exit 0
           fi
           echo "ready=true" >> "$GITHUB_OUTPUT"
-          echo "Signing secrets, calendar key, and public repository visibility are configured."
+          echo "Signing secrets and public repository visibility are configured."
 
   publish:
     name: Test, sign, and publish APK
@@ -112,31 +111,6 @@ jobs:
           chmod 600 "$KEYSTORE_PATH"
           echo "ANDROID_KEYSTORE_PATH=$KEYSTORE_PATH" >> "$GITHUB_ENV"
 
-      - name: Validate current licensed calendar snapshot
-        run: |
-          python - <<'PY'
-          import datetime as dt
-          import json
-          from pathlib import Path
-
-          payload = json.loads(Path("data/economic-calendar.json").read_text(encoding="utf-8"))
-          attribution = payload.get("attribution") or {}
-          usage = payload.get("free_developer") or {}
-          required_attribution = ("source", "url", "terms")
-          if any(not isinstance(attribution.get(key), str) or not attribution[key].strip() for key in required_attribution):
-              raise SystemExit("Calendar snapshot is missing mandatory Free Developer attribution.")
-          if not isinstance(usage, dict) or not usage.get("plan"):
-              raise SystemExit("Calendar snapshot is missing the live Free Developer quota object.")
-          fetched = dt.datetime.fromisoformat(payload["fetched_at"].replace("Z", "+00:00"))
-          age = dt.datetime.now(dt.timezone.utc) - fetched
-          if age.total_seconds() < 0 or age > dt.timedelta(hours=36):
-              raise SystemExit("Calendar snapshot is stale; run Update licensed economic calendar before release.")
-          events = payload.get("events")
-          if not isinstance(events, list) or len(events) > 60:
-              raise SystemExit("Calendar snapshot is missing or exceeds the configured three-response limit.")
-          print(f"Verified {len(events)} attributed schedule events; daily quota {usage.get('used_today')}/{usage.get('daily_limit')}; monthly quota {usage.get('used_this_month')}/{usage.get('monthly_limit')}.")
-          PY
-
       - name: Run unit tests and Android lint
         run: gradle --no-daemon --stacktrace :app:testDebugUnitTest :app:lintDebug :app:lintRelease
 
@@ -199,12 +173,12 @@ jobs:
           - Topic filters and a locally stored, user-configurable instrument watchlist.
           - Explicit LIVE, CACHED, OFFLINE, and CONNECTING feed states.
           - Best-effort background refresh and optional local Android headline notifications.
-          - Native Finance Calendar Free Developer schedule snapshot with event-time precision, High/Medium/Low filters, original publisher links/credits, truncation notices and quota status.
-          - Official Forex Factory calendar link (no scraping or redistribution of its FEED data).
+          - Searchable news headlines with topic filters and a user-configurable instrument watchlist.
+          - Official Forex Factory calendar and weekly JSON/ICS/CSV export links, served directly from the original host.
           - Bounded HTTPS requests, URL validation, parser limits, and local cache controls.
 
           ## Data limitations
-          - Forex Factory event data remains on the official website; this app does not scrape or redistribute the calendar.
+          - Forex Factory calendar data is opened from the official publisher; the app does not scrape, cache or redistribute its FEED database.
           - Instrument matches are keyword relevance hints, not market impact ratings or trading signals.
           - Free Developer schedule responses do not include forecast, prior or actual figures.
           - No post-event price reaction is displayed because a licensed price-history source is not configured.
