@@ -3,6 +3,8 @@ package com.tradingnews.app.data
 import android.content.Context
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
@@ -18,6 +20,47 @@ import java.time.Instant
 class TradingNewsRepository(context: Context) {
     private val appContext = context.applicationContext
     private val preferences = appContext.getSharedPreferences(CACHE_PREFS, Context.MODE_PRIVATE)
+
+    fun getStorageInfo(): NewsStorageInfo {
+        val payload = preferences.getString(KEY_PAYLOAD, null)
+        val retrievedAtValue = preferences.getString(KEY_RETRIEVED_AT, null)
+        val cacheBytes = (
+            (payload?.toByteArray(StandardCharsets.UTF_8)?.size ?: 0) +
+                (retrievedAtValue?.toByteArray(StandardCharsets.UTF_8)?.size ?: 0)
+            ).toLong()
+        val count = payload?.let {
+            runCatching {
+                JSONObject(it).optJSONArray("articles")?.length()?.coerceAtMost(MAX_ARTICLES) ?: 0
+            }.getOrDefault(0)
+        } ?: 0
+        val settings = appContext.getSharedPreferences(NewsWorkScheduler.PREFERENCES, Context.MODE_PRIVATE).all
+        return NewsStorageInfo(
+            cachedArticleCount = count,
+            cacheBytes = cacheBytes,
+            settingsBytes = estimatePreferenceBytes(settings),
+            retrievedAt = retrievedAtValue?.let(::parseInstant)
+        )
+    }
+
+    /** Removes cached headlines and the refresh timestamp without changing user settings. */
+    fun clearNewsCache() {
+        preferences.edit().clear().apply()
+    }
+
+    private fun estimatePreferenceBytes(values: Map<String, *>): Long =
+        values.entries.sumOf { (key, value) ->
+            key.toByteArray(StandardCharsets.UTF_8).size.toLong() + when (value) {
+                is String -> value.toByteArray(StandardCharsets.UTF_8).size.toLong()
+                is Set<*> -> value.sumOf {
+                    it?.toString()?.toByteArray(StandardCharsets.UTF_8)?.size?.toLong() ?: 0L
+                }
+                is Boolean -> 1L
+                is Int -> 4L
+                is Long -> 8L
+                is Float -> 4L
+                else -> 0L
+            }
+        }
 
     fun readCachedFeed(): NewsFeed? {
         return try {
@@ -81,6 +124,8 @@ class TradingNewsRepository(context: Context) {
             val articles = NewsParser.parse(root, NewsPreferences.getWatchlist(appContext))
             val retrievedAt = Instant.now()
             val compactCache = serializeCache(articles)
+            // A cancelled foreground refresh must not recreate data after a user-triggered clear.
+            currentCoroutineContext().ensureActive()
             preferences.edit()
                 .putString(KEY_PAYLOAD, compactCache)
                 .putString(KEY_RETRIEVED_AT, retrievedAt.toString())
@@ -195,7 +240,7 @@ class TradingNewsRepository(context: Context) {
         const val KEY_LAST_FETCH_EPOCH = "last_fetch_epoch"
         const val GDELT_DOC_URL = "https://api.gdeltproject.org/api/v2/doc/doc"
         const val MARKET_NEWS_QUERY = """(inflation OR "central bank" OR "interest rate" OR "monetary policy" OR "stock market" OR forex OR currency OR bonds OR "oil price" OR OPEC OR "natural gas" OR gold OR war OR conflict OR sanctions OR tariffs OR election OR bitcoin OR cryptocurrency OR "company earnings" OR bankruptcy OR "banking crisis")"""
-        const val USER_AGENT = "TradingNews-Android/0.5.0"
+        const val USER_AGENT = "TradingNews-Android/0.6.0"
         const val CONNECT_TIMEOUT_MS = 10_000
         const val READ_TIMEOUT_MS = 15_000
         const val MAX_RESPONSE_BYTES = 2_000_000L

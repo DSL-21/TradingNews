@@ -17,7 +17,7 @@ object NewsWorkScheduler {
 
     fun isAutoRefreshEnabled(context: Context): Boolean =
         context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
-            .getBoolean(KEY_AUTO_REFRESH, true)
+            .getBoolean(KEY_AUTO_REFRESH, false)
 
     fun isAlertsEnabled(context: Context): Boolean =
         context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
@@ -69,6 +69,17 @@ object NewsWorkScheduler {
 
     fun cancel(context: Context) {
         WorkManager.getInstance(context.applicationContext).cancelUniqueWork(UNIQUE_WORK_NAME)
+    }
+
+    /** Reset local settings to privacy-friendly defaults and cancel the periodic worker. */
+    fun resetLocalSettings(context: Context) {
+        context.applicationContext.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+            .edit()
+            .clear()
+            .putBoolean(KEY_AUTO_REFRESH, false)
+            .putBoolean(KEY_ALERTS_ENABLED, false)
+            .apply()
+        cancel(context)
     }
 
     private const val MIN_INTERVAL_MINUTES = 15L

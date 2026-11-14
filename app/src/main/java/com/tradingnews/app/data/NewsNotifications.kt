@@ -34,6 +34,14 @@ object NewsNotifications {
         )
     }
 
+    fun clearAppNotifications(context: Context) {
+        NotificationManagerCompat.from(context).cancelAll()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+            manager?.deleteNotificationChannel(CHANNEL_ID)
+        }
+    }
+
     fun canPost(context: Context): Boolean {
         if (!NewsWorkScheduler.isAlertsEnabled(context)) return false
         if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) return false

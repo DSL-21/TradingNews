@@ -43,6 +43,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.ShowChart
 import androidx.compose.material3.Button
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -81,6 +82,7 @@ import com.tradingnews.app.data.NewsCategories
 import com.tradingnews.app.data.NewsItem
 import com.tradingnews.app.data.NewsPreferences
 import com.tradingnews.app.data.NewsWorkScheduler
+import com.tradingnews.app.data.TradingNewsRepository
 import java.net.URI
 import java.time.Duration
 import java.time.Instant
@@ -177,7 +179,12 @@ private fun TradingNewsApp(viewModel: TradingNewsViewModel) {
                 )
                 AppTab.CALENDAR -> CalendarScreen()
                 AppTab.NEWS -> NewsScreen(state)
-                AppTab.SETTINGS -> SettingsScreen(state) { viewModel.refresh(forceRefresh = true) }
+                AppTab.SETTINGS -> SettingsScreen(
+                    state = state,
+                    onRefresh = { viewModel.refresh(forceRefresh = true) },
+                    onClearNewsCache = { viewModel.clearNewsCache() },
+                    onClearAllLocalData = { viewModel.clearAllLocalData() }
+                )
             }
         }
     }
@@ -407,7 +414,12 @@ private fun NewsScreen(state: TradingNewsUiState) {
 }
 
 @Composable
-private fun SettingsScreen(state: TradingNewsUiState, onRefresh: () -> Unit) {
+private fun SettingsScreen(
+    state: TradingNewsUiState,
+    onRefresh: () -> Unit,
+    onClearNewsCache: () -> Unit,
+    onClearAllLocalData: () -> Unit
+) {
     val context = LocalContext.current
     var autoRefresh by rememberSaveable {
         mutableStateOf(NewsWorkScheduler.isAutoRefreshEnabled(context))
@@ -417,6 +429,12 @@ private fun SettingsScreen(state: TradingNewsUiState, onRefresh: () -> Unit) {
     }
     var selectedInstruments by remember {
         mutableStateOf(NewsPreferences.getWatchlist(context))
+    }
+    var showClearCacheDialog by rememberSaveable { mutableStateOf(false) }
+    var showClearAllDialog by rememberSaveable { mutableStateOf(false) }
+    var storageRevision by rememberSaveable { mutableStateOf(0) }
+    val storageInfo = remember(state.lastUpdated, storageRevision) {
+        TradingNewsRepository(context).getStorageInfo()
     }
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -564,9 +582,34 @@ private fun SettingsScreen(state: TradingNewsUiState, onRefresh: () -> Unit) {
         }
         item {
             SettingsCard {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Privacy and storage", color = TextMain, fontWeight = FontWeight.SemiBold)
-                    Text("The app stores a compact GDELT headline cache, selected instruments and refresh preferences on this device. It does not require a user account or embed third-party API credentials.", color = TextMuted, fontSize = 11.sp, lineHeight = 17.sp)
+                    Text("Trading News keeps only a small rolling cache of headline metadata. It does not download full articles or build a historical archive.", color = TextMuted, fontSize = 11.sp, lineHeight = 17.sp)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("Headline cache", color = TextMuted, fontSize = 11.sp)
+                        Text("${storageInfo.cachedArticleCount} / 50 • ${formatBytes(storageInfo.cacheBytes)}", color = TextMain, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("Local preferences", color = TextMuted, fontSize = 11.sp)
+                        Text(formatBytes(storageInfo.settingsBytes), color = TextMain, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("Estimated local user data", color = TextMuted, fontSize = 11.sp)
+                        Text(formatBytes(storageInfo.estimatedUserDataBytes), color = Accent, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Text("Last cache update: ${storageInfo.retrievedAt?.let(::formatDateTime) ?: "No cached headlines"}", color = TextMuted, fontSize = 10.sp)
+                    Text("This is an estimate of saved values, not the APK size. It excludes Android/WorkManager system records and your browser's own cache. Expired cache is discarded after 24 hours; a refresh replaces the previous cache.", color = TextMuted, fontSize = 10.sp, lineHeight = 15.sp)
+                    HorizontalDivider(color = Border)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        TextButton(onClick = { showClearCacheDialog = true }) {
+                            Text("Clear news cache", color = Accent, fontSize = 11.sp)
+                        }
+                    }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        TextButton(onClick = { showClearAllDialog = true }) {
+                            Text("Clear all local data", color = Error, fontSize = 11.sp)
+                        }
+                    }
                 }
             }
         }
@@ -574,13 +617,58 @@ private fun SettingsScreen(state: TradingNewsUiState, onRefresh: () -> Unit) {
             SettingsCard {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("About Trading News", color = TextMain, fontWeight = FontWeight.SemiBold)
-                    Text("Version 0.5.0 • Android", color = TextMuted, fontSize = 11.sp)
+                    Text("Version 0.6.0 • Android", color = TextMuted, fontSize = 11.sp)
                     Text("Informational use only. Relevance scores are deterministic keyword matches. Observed event returns describe price movement after a timestamp; they do not prove causality or predict future prices.", color = TextMuted, fontSize = 11.sp, lineHeight = 17.sp)
                     Text("Feed status: ${statusText(state.status)}", color = TextMuted, fontSize = 10.sp)
                     state.lastUpdated?.let { Text("Last retrieved: ${formatDateTime(it)}", color = TextMuted, fontSize = 10.sp) }
                 }
             }
         }
+    }
+
+    if (showClearCacheDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearCacheDialog = false },
+            containerColor = Panel,
+            titleContentColor = TextMain,
+            textContentColor = TextMuted,
+            title = { Text("Clear news cache?") },
+            text = { Text("This removes saved headlines and their refresh timestamp. Your instrument watchlist and refresh settings remain unchanged.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showClearCacheDialog = false
+                    onClearNewsCache()
+                    storageRevision += 1
+                }) { Text("Clear cache", color = Accent) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearCacheDialog = false }) { Text("Cancel", color = TextMuted) }
+            }
+        )
+    }
+
+    if (showClearAllDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearAllDialog = false },
+            containerColor = Panel,
+            titleContentColor = TextMain,
+            textContentColor = TextMuted,
+            title = { Text("Clear all local data?") },
+            text = { Text("This removes saved headlines and preferences, resets the instrument watchlist to defaults, disables and cancels background refresh, disables alerts, and clears Trading News notifications. Android's notification permission is managed separately in system settings.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showClearAllDialog = false
+                    onClearAllLocalData()
+                    autoRefresh = false
+                    alertsEnabled = false
+                    selectedInstruments = InstrumentRelevanceEngine.supportedSymbols.toSet()
+                    storageRevision += 1
+                }) { Text("Clear all data", color = Error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearAllDialog = false }) { Text("Cancel", color = TextMuted) }
+            }
+        )
     }
 }
 
@@ -727,6 +815,12 @@ private fun openExternalUrl(context: android.content.Context, value: String) {
     } catch (_: ActivityNotFoundException) {
         // No browser is installed; keep the app stable and do not open an unsafe fallback.
     }
+}
+
+private fun formatBytes(value: Long): String {
+    val safe = value.coerceAtLeast(0L)
+    return if (safe < 1_024L) "$safe B"
+    else String.format(Locale.US, "%.1f KB", safe / 1_024.0)
 }
 
 private fun formatDateTime(value: String): String {

@@ -35,3 +35,15 @@ data class NewsFeed(
     val status: FeedStatus,
     val notice: String
 )
+
+
+/** Approximate size of app-owned headline metadata and preference values. */
+data class NewsStorageInfo(
+    val cachedArticleCount: Int,
+    val cacheBytes: Long,
+    val settingsBytes: Long,
+    val retrievedAt: Instant?
+) {
+    val estimatedUserDataBytes: Long
+        get() = cacheBytes + settingsBytes
+}

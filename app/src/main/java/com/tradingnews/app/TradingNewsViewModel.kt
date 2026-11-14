@@ -8,6 +8,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.tradingnews.app.data.FeedStatus
 import com.tradingnews.app.data.NewsItem
+import com.tradingnews.app.data.NewsNotifications
+import com.tradingnews.app.data.NewsWorkScheduler
 import com.tradingnews.app.data.TradingNewsRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -25,6 +27,7 @@ data class TradingNewsUiState(
 
 class TradingNewsViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = TradingNewsRepository(application)
+    private var refreshJob: kotlinx.coroutines.Job? = null
 
     var uiState by mutableStateOf(TradingNewsUiState())
         private set
@@ -47,7 +50,7 @@ class TradingNewsViewModel(application: Application) : AndroidViewModel(applicat
 
     fun refresh(forceRefresh: Boolean = true) {
         if (uiState.isRefreshing) return
-        viewModelScope.launch {
+        refreshJob = viewModelScope.launch {
             uiState = uiState.copy(
                 isLoading = uiState.articles.isEmpty(),
                 isRefreshing = true,
@@ -74,5 +77,29 @@ class TradingNewsViewModel(application: Application) : AndroidViewModel(applicat
                 )
             }
         }
+    }
+
+    fun clearNewsCache() {
+        refreshJob?.cancel()
+        refreshJob = null
+        repository.clearNewsCache()
+        uiState = TradingNewsUiState(
+            status = FeedStatus.OFFLINE,
+            isLoading = false,
+            notice = "Local headline cache cleared. Refresh to load current headlines."
+        )
+    }
+
+    fun clearAllLocalData() {
+        refreshJob?.cancel()
+        refreshJob = null
+        repository.clearNewsCache()
+        NewsWorkScheduler.resetLocalSettings(getApplication())
+        NewsNotifications.clearAppNotifications(getApplication())
+        uiState = TradingNewsUiState(
+            status = FeedStatus.OFFLINE,
+            isLoading = false,
+            notice = "Local app data cleared. Background refresh and alerts are disabled."
+        )
     }
 }
