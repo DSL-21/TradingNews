@@ -18,7 +18,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.OpenInNew
 import androidx.compose.material3.Button
@@ -39,10 +38,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 private const val FOREX_FACTORY_CALENDAR = "https://www.forexfactory.com/calendar"
-private const val FOREX_FACTORY_JSON = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
-private const val FOREX_FACTORY_ICS = "https://nfs.faireconomy.media/ff_calendar_thisweek.ics"
-private const val FOREX_FACTORY_CSV = "https://nfs.faireconomy.media/ff_calendar_thisweek.csv"
-private const val FOREX_FACTORY_XML = "https://nfs.faireconomy.media/ff_calendar_thisweek.xml"
 
 private val CalendarBackground = Color(0xFF0B1017)
 private val CalendarPanel = Color(0xFF121B25)
@@ -160,21 +155,25 @@ fun EconomicCalendarScreen() {
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        "OFFICIAL WEEKLY EXPORTS",
+                        "WEEKLY EXPORTS",
                         color = Color(0xFFE8F0F4),
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 12.sp
                     )
                     Text(
-                        "Forex Factory also publishes this week's schedule as ICS, CSV and JSON. These links open the files directly from the original host; Trading News does not import or republish their contents.",
+                        "The official calendar page also provides weekly exports in JSON, ICS, CSV and XML. Open the calendar page and use its own current export links; Forex Factory adds a version parameter to those links so the latest file is requested.",
                         color = CalendarMuted,
                         fontSize = 11.sp,
                         lineHeight = 16.sp
                     )
-                    ExportLink("JSON", "Structured weekly schedule", FOREX_FACTORY_JSON, context)
-                    ExportLink("ICS", "Add the weekly schedule to a calendar app", FOREX_FACTORY_ICS, context)
-                    ExportLink("CSV", "Open the weekly schedule as a table", FOREX_FACTORY_CSV, context)
-                    ExportLink("XML", "Structured weekly schedule", FOREX_FACTORY_XML, context)
+                    TextButton(
+                        onClick = { openOfficialUrl(context, FOREX_FACTORY_CALENDAR) },
+                        contentPadding = PaddingValues(horizontal = 0.dp, vertical = 0.dp)
+                    ) {
+                        Text("View weekly export links", color = CalendarAccent, fontSize = 11.sp)
+                        Spacer(Modifier.size(5.dp))
+                        Icon(Icons.Outlined.OpenInNew, contentDescription = null, tint = CalendarAccent, modifier = Modifier.size(14.dp))
+                    }
                 }
             }
         }
@@ -195,28 +194,6 @@ fun EconomicCalendarScreen() {
                     lineHeight = 15.sp
                 )
             }
-        }
-    }
-}
-
-@Composable
-private fun ExportLink(label: String, description: String, url: String, context: Context) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(label, color = CalendarAccent, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-            Text(description, color = CalendarMuted, fontSize = 10.sp)
-        }
-        TextButton(
-            onClick = { openOfficialUrl(context, url) },
-            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
-        ) {
-            Icon(Icons.Outlined.Download, contentDescription = null, tint = CalendarAccent, modifier = Modifier.size(15.dp))
-            Spacer(Modifier.size(4.dp))
-            Text("Open", color = CalendarAccent, fontSize = 10.sp)
         }
     }
 }
