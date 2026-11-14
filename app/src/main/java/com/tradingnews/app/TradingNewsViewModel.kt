@@ -83,6 +83,7 @@ class TradingNewsViewModel(application: Application) : AndroidViewModel(applicat
         refreshJob?.cancel()
         refreshJob = null
         repository.clearNewsCache()
+        getApplication<Application>().deleteSharedPreferences("trading_news_calendar_cache")
         uiState = TradingNewsUiState(
             status = FeedStatus.OFFLINE,
             isLoading = false,
