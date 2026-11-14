@@ -11,3 +11,12 @@ app/build/
 *keystore-password*.txt
 *calendar-api-key*.txt
 *financecalendar-api-key*.txt
+
+# Additional private signing material and local secrets
+*.pfx
+*.jceks
+*.pem
+*.key
+.env
+.env.*
+!.env.example
