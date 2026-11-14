@@ -1,5 +1,6 @@
 package com.tradingnews.app.data
 
+import android.annotation.SuppressLint
 import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -41,6 +42,7 @@ object NewsNotifications {
             PackageManager.PERMISSION_GRANTED
     }
 
+    @SuppressLint("MissingPermission")
     fun showNewHeadlines(context: Context, articles: List<NewsItem>) {
         if (articles.isEmpty() || !canPost(context)) return
         ensureChannel(context)
@@ -71,8 +73,12 @@ object NewsNotifications {
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .build()
 
-        runCatching {
+        try {
+            // canPost() checks notification settings and POST_NOTIFICATIONS. The
+            // permission can still be revoked between the check and notify().
             NotificationManagerCompat.from(context).notify(NEWS_NOTIFICATION_ID, notification)
+        } catch (_: SecurityException) {
+            // Notifications were disabled while the worker was preparing this alert.
         }
     }
 
