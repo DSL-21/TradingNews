@@ -55,7 +55,11 @@ The repository is currently Private. When you have reviewed the complete Git his
 
 The source code and MIT licence are public; the signing key remains in your local encrypted backups and GitHub Actions secrets. The release workflow refuses to publish while the repository is private.
 
-## 5. Publish the first production APK
+## 5. Remove obsolete calendar credentials
+
+Earlier project versions optionally used a separate Finance Calendar API key. The current app no longer calls that service or reads a calendar snapshot. In GitHub open **Settings → Secrets and variables → Actions** and remove the old `FC_API_KEY` secret if it exists. The current app needs no Finance Calendar or Forex Factory API key.
+
+## 6. Publish the first production APK
 
 The current app version is `0.7.0` (Android versionCode 7). Once the signing secrets are configured and the repository is Public:
 
