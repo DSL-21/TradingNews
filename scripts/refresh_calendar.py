@@ -53,9 +53,25 @@ def fetch_group(api_key: str, countries: str, start: dt.date, end: dt.date) -> d
         raise RuntimeError("Finance Calendar response has an invalid events array")
     if not isinstance(attribution, dict):
         raise RuntimeError("Finance Calendar response is missing its attribution object")
-    for required in ("source", "terms", "docs"):
+    for required in ("source", "terms", "url"):
         if not isinstance(attribution.get(required), str) or not attribution[required].strip():
             raise RuntimeError(f"Finance Calendar attribution is missing {required}")
+    usage = parsed.get("free_developer")
+    if not isinstance(usage, dict):
+        raise RuntimeError("Finance Calendar Free Developer usage object is missing")
+    required_usage = (
+        "plan", "access_scope", "quota_basis", "daily_limit", "monthly_limit",
+        "used_today", "remaining_today", "used_this_month", "remaining_this_month",
+        "resets_at", "monthly_resets_at", "max_events_per_response", "window",
+        "upgrade_url", "resume_at_utc",
+    )
+    missing_usage = [field for field in required_usage if field not in usage]
+    if missing_usage:
+        raise RuntimeError(f"Free Developer usage object is missing required fields: {missing_usage}")
+    if not isinstance(usage["window"], dict) or not {"from", "to", "timezone"}.issubset(usage["window"]):
+        raise RuntimeError("Free Developer usage window is incomplete")
+    if int(usage["max_events_per_response"]) > MAX_EVENTS_PER_RESPONSE:
+        raise RuntimeError("Provider free-plan response limit is higher than the local cap")
     if not isinstance(parsed.get("truncated"), bool):
         raise RuntimeError("Finance Calendar response is missing its truncation status")
     return parsed
@@ -67,6 +83,7 @@ def build_snapshot(responses: list[dict], fetched_at: dt.datetime) -> dict:
     more_on_paid_plans = 0
     generated_values: list[str] = []
     attribution: dict | None = None
+    free_developer_usage: dict | None = None
 
     for response in responses:
         truncated = truncated or bool(response.get("truncated", False))
@@ -82,9 +99,14 @@ def build_snapshot(responses: list[dict], fetched_at: dt.datetime) -> dict:
             attribution = current_attribution
         elif current_attribution != attribution:
             # The same source and legal notice must apply to all groups in one snapshot.
-            for key in ("source", "terms", "docs"):
+            for key in ("source", "terms", "url"):
                 if current_attribution.get(key) != attribution.get(key):
                     raise RuntimeError("Calendar attribution changed between country-group requests")
+
+        current_usage = response.get("free_developer")
+        if not isinstance(current_usage, dict):
+            raise RuntimeError("Calendar response is missing Free Developer quota usage")
+        free_developer_usage = current_usage
 
         for event in response["events"]:
             if not isinstance(event, dict):
@@ -118,8 +140,9 @@ def build_snapshot(responses: list[dict], fetched_at: dt.datetime) -> dict:
         "attribution": {
             "source": attribution["source"],
             "terms": attribution["terms"],
-            "docs": attribution["docs"],
+            "url": attribution["url"],
         },
+        "free_developer": free_developer_usage,
         "events": ordered,
     }
 
