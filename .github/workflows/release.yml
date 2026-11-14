@@ -158,7 +158,13 @@ jobs:
           APKSIGNER="$ANDROID_HOME/build-tools/36.0.0/apksigner"
           AAPT="$ANDROID_HOME/build-tools/36.0.0/aapt"
           test -s "$APK"
-          "$APKSIGNER" verify --verbose --print-certs "$APK"
+          VERIFY_OUTPUT="$("$APKSIGNER" verify --verbose --print-certs "$APK" 2>&1)"
+          printf '%s\n' "$VERIFY_OUTPUT"
+          EXPECTED_CERT_SHA256="AF:65:0B:1F:30:4C:6C:D6:9F:42:BA:15:5E:B5:44:DF:EB:AF:A6:3F:6D:A6:1C:91:4B:78:C1:11:B0:AC:51:EA"
+          if ! grep -Fqi "$EXPECTED_CERT_SHA256" <<< "$VERIFY_OUTPUT"; then
+            echo "APK was not signed with the registered Trading News release certificate."
+            exit 1
+          fi
           "$AAPT" dump badging "$APK" > apk-badging.txt
           grep -q "package: name='com.tradingnews.app'" apk-badging.txt
           grep -q "versionName='$VERSION_NAME'" apk-badging.txt
