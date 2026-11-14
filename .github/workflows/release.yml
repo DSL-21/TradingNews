@@ -101,8 +101,8 @@ jobs:
             exit 1
           fi
           TAG="v$VERSION_NAME"
-          if gh release view "$TAG" --repo "$GH_REPO" >/dev/null 2>&1; then
-            echo "::error::Release $TAG already exists. Increment versionName and versionCode."
+          if gh release view "$TAG" --repo "$GH_REPO" >/dev/null 2>&1 || gh api "repos/$GH_REPO/git/ref/tags/$TAG" >/dev/null 2>&1; then
+            echo "::error::Release or Git tag $TAG already exists. Increment versionName and versionCode."
             exit 1
           fi
           echo "version=$VERSION_NAME" >> "$GITHUB_OUTPUT"
