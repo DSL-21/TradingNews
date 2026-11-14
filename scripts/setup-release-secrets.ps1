@@ -43,12 +43,8 @@ try {
         throw "keytool was not found. Install Android Studio or a JDK 17+, then run this script again."
     }
 
-    $keyDirectory = Split-Path -Parent $KeystorePath
-    if (-not (Test-Path -LiteralPath $keyDirectory -PathType Container)) {
-        New-Item -ItemType Directory -Path $keyDirectory -Force | Out-Null
-    }
-
-    $resolvedDirectory = [System.IO.Path]::GetFullPath($keyDirectory)
+    $keyDirectory = Split-Path -Parent ([System.IO.Path]::GetFullPath($KeystorePath))
+    $passwordDirectory = Split-Path -Parent ([System.IO.Path]::GetFullPath($PasswordFile))
     $repoRoot = $null
     $gitCommand = Get-Command git -ErrorAction SilentlyContinue
     if ($gitCommand) {
@@ -59,9 +55,20 @@ try {
     }
     if ($repoRoot) {
         $repoPrefix = $repoRoot.TrimEnd([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar) + [System.IO.Path]::DirectorySeparatorChar
-        if ($resolvedDirectory.Equals($repoRoot, [System.StringComparison]::OrdinalIgnoreCase) -or
-            $resolvedDirectory.StartsWith($repoPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
-            throw "Signing material must be stored outside the repository. Use the default TradingNewsSigning folder under your home directory."
+        foreach ($privatePath in @(
+            [System.IO.Path]::GetFullPath($KeystorePath),
+            [System.IO.Path]::GetFullPath($PasswordFile)
+        )) {
+            if ($privatePath.Equals($repoRoot, [System.StringComparison]::OrdinalIgnoreCase) -or
+                $privatePath.StartsWith($repoPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+                throw "Signing material must be stored outside the repository. Use the default TradingNewsSigning folder under your home directory."
+            }
+        }
+    }
+
+    foreach ($directory in @($keyDirectory, $passwordDirectory) | Select-Object -Unique) {
+        if (-not (Test-Path -LiteralPath $directory -PathType Container)) {
+            New-Item -ItemType Directory -Path $directory -Force | Out-Null
         }
     }
 
