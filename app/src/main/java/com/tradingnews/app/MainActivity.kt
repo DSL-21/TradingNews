@@ -101,12 +101,15 @@ private val Warning = Color(0xFFFFB454)
 private val Blue = Color(0xFF79AFFF)
 private val Error = Color(0xFFFF647C)
 private const val GDELT_ABOUT = "https://www.gdeltproject.org/about.html"
+private const val LEGACY_CALENDAR_PREFERENCES = "trading_news_calendar_cache"
 
 class MainActivity : ComponentActivity() {
     private val viewModel by viewModels<TradingNewsViewModel>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Remove the obsolete Finance Calendar JSON cache left by pre-0.6 installs.
+        deleteSharedPreferences(LEGACY_CALENDAR_PREFERENCES)
         WindowCompat.setDecorFitsSystemWindows(window, true)
         NewsWorkScheduler.ensureScheduled(this)
         setContent { TradingNewsTheme { TradingNewsApp(viewModel) } }
