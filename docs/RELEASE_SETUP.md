@@ -50,9 +50,9 @@ The signed-release workflow checks that the repository is Public before publishi
 
 1. Configure the four signing secrets using the helper above.
 2. Change repository visibility to Public after reviewing its history.
-3. Open GitHub Actions → **Build Trading News APK** → Run workflow on main.
-4. The workflow runs unit tests and Android lint, builds a debug artifact, then triggers **Publish Trading News GitHub Release**.
-5. The release workflow rebuilds the production release APK, verifies the persistent signing certificate, package name and version, and creates a standard GitHub Release with the APK attached.
+3. Open GitHub Actions → **Publish Trading News GitHub Release** → Run workflow, and select the `main` branch.
+4. Enter `RELEASE` exactly in the confirmation field and provide a short, accurate release summary.
+5. The workflow reruns unit tests and Android lint, builds the signed production APK, verifies the package name, version and registered signing-certificate fingerprint, then creates the versioned GitHub Release with the APK attached.
 
 Future source changes trigger the debug build/test workflow automatically. A production release is never published just because a commit was pushed: the owner starts the release workflow manually after deciding that the version is ready. No source ZIP or manual APK upload is needed.
 
