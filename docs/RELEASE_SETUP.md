@@ -61,7 +61,7 @@ Earlier project versions optionally used a separate Finance Calendar API key. Th
 
 ## 6. Publish the first production APK
 
-The current app version is `0.7.0` (Android versionCode 7). Once the signing secrets are configured and the repository is Public:
+The current app version is `0.7.1` (Android versionCode 8). Once the signing secrets are configured and the repository is Public:
 
 1. Open the repository's **Actions** tab.
 2. Select **Publish Trading News GitHub Release** and click **Run workflow** on the `main` branch.
