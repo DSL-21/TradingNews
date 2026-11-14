@@ -61,6 +61,7 @@ internal object NewsParser {
     }
 
     internal fun normalizedSafeHttpsUrl(value: String): String? {
+        if (value.isBlank() || value.length > MAX_URL_LENGTH) return null
         return try {
             val uri = URI(value)
             val rawHost = uri.host ?: return null
@@ -144,5 +145,6 @@ internal object NewsParser {
     private const val MAX_ARTICLES = 50
     private const val MAX_INPUT_RECORDS = 250
     private const val MAX_FRAGMENT_LENGTH = 2_048
+    private const val MAX_URL_LENGTH = 4_096
     private val DNS_LABEL_REGEX = Regex("[a-z0-9-]+")
 }
