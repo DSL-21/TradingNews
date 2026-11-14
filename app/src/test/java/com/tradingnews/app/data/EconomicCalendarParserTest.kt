@@ -37,6 +37,10 @@ class EconomicCalendarParserTest {
         assertEquals("date", result.timePrecision)
         assertNull(result.figuresAvailable)
         assertNull(result.resultAvailable)
+        assertEquals("Free Developer", parsed.freeDeveloperUsage?.plan)
+        assertEquals(10, parsed.freeDeveloperUsage?.dailyLimit)
+        assertEquals(90, parsed.freeDeveloperUsage?.remainingThisMonth)
+        assertEquals("UTC", parsed.freeDeveloperUsage?.windowTimezone)
     }
 
     @Test
@@ -123,8 +127,34 @@ class EconomicCalendarParserTest {
                 JSONObject()
                     .put("source", "financecalendar.com")
                     .put("terms", "Use is governed by https://www.financecalendar.com/api/terms/")
-                    .put("docs", "https://www.financecalendar.com/api/")
+                    .put("url", "https://www.financecalendar.com/")
             )
+            .put("free_developer", usage())
+
+
+    private fun usage(): JSONObject =
+        JSONObject()
+            .put("plan", "Free Developer")
+            .put("access_scope", "schedule_json")
+            .put("quota_basis", "successful responses")
+            .put("daily_limit", 10)
+            .put("monthly_limit", 100)
+            .put("used_today", 1)
+            .put("remaining_today", 9)
+            .put("used_this_month", 10)
+            .put("remaining_this_month", 90)
+            .put("resets_at", "2026-11-15T00:00:00Z")
+            .put("monthly_resets_at", "2026-12-01T00:00:00Z")
+            .put("max_events_per_response", 20)
+            .put(
+                "window",
+                JSONObject()
+                    .put("from", "2026-11-14")
+                    .put("to", "2026-11-20")
+                    .put("timezone", "UTC")
+            )
+            .put("upgrade_url", "https://www.financecalendar.com/api/")
+            .put("resume_at_utc", "2026-11-15T00:00:00Z")
 
     private fun event(
         id: String,
