@@ -26,7 +26,7 @@
 | Notifications | Opt-in local Android notifications; Android 13+ runtime permission checked; alerts disabled with background refresh |
 | Calendar API secret | Finance Calendar API key stored only in GitHub Actions secret FC_API_KEY and sent through X-API-Key; never embedded in APK or snapshot |
 | Calendar updater | Three daily requests, each capped at 20 events/1 MB; response attribution and publisher source-rights fields retained; updater does not replace the previous snapshot if a request fails |
-| Release signing | Persistent PKCS12 private key supplied through protected GitHub Actions secrets; keystore is not committed |
+| Release signing | Persistent PKCS12 private key supplied through protected GitHub Actions secrets; keystore is not committed; release workflow checks the configured public repository and current calendar snapshot |
 | CI supply chain | Third-party actions pinned to immutable commit SHAs |
 | Data collection | No account, analytics SDK, advertising SDK, location collection or provider API secret embedded in the APK |
 
@@ -58,7 +58,7 @@
 ## Setup and deployment dependencies
 
 1. A Finance Calendar Free Developer API key must be obtained by the repository owner and stored as GitHub Actions secret `FC_API_KEY`. The API updater does not run with real events until that secret exists and the first successful schedule fetch completes.
-2. The repository must be Public for the installed app to fetch the raw JSON snapshot anonymously. A private repository cannot serve the configured raw URL to arbitrary Android users without a backend or an embedded credential; embedding a GitHub token is not permitted.
+2. The repository must be Public for the installed app to fetch the raw JSON snapshot anonymously. A private repository cannot serve the configured raw URL to arbitrary Android users without a backend or an embedded credential; embedding a GitHub token is not permitted. The signed-release workflow checks public visibility and blocks the release if the repository is Private.
 3. Four Android signing secrets must be configured before the signed-release job can publish: ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS and ANDROID_KEY_PASSWORD.
 4. The private signing key and password must be securely backed up by the owner. Do not commit them.
 
