@@ -1,6 +1,6 @@
 # Trading News — Android 0.7.0
 
-Trading News is a simple English-language Android app for following Forex and broader market news. It combines a live headline feed, fast on-device search, topic filters, a user-configurable instrument watchlist, background refresh, and direct access to the official Forex Factory calendar.
+Trading News is a simple English-language, broker-independent Android app for discovering Forex and broader market headlines. It combines a live news feed, on-device search, topic and instrument filters, an optional local watchlist, best-effort background refresh, and a direct link to the official Forex Factory calendar. It does not connect to a broker, request account credentials or show fabricated price-impact scores.
 
 The source, automated tests, Android builds and release workflow are managed directly in GitHub. No source ZIP upload is needed for future code changes.
 
@@ -17,6 +17,10 @@ The source, automated tests, Android builds and release workflow are managed dir
 - **Background refresh:** optional Android WorkManager refresh, best-effort every 15 minutes. Android battery controls can delay it.
 - **Local notifications:** optional Android notifications for new headlines matching the watchlist. These are not remote push messages.
 - **Forex Factory calendar:** opens the official calendar and its own weekly export links (JSON, ICS, CSV and XML). The calendar/export data stays hosted by Forex Factory.
+
+## Open-source licence
+
+The application source code is released under the MIT License; see [LICENSE](LICENSE). This license applies to this repository's code, not third-party news content, provider databases, trademarks, logos, websites or other externally hosted material. GDELT and publisher content remain subject to their respective terms.
 
 ## Privacy and local storage
 
@@ -59,4 +63,4 @@ See [docs/RELEASE_SETUP.md](docs/RELEASE_SETUP.md) for signing and publication s
 
 CI runs the GDELT parser/URL-safety tests, instrument relevance tests, Android lint and APK compilation. See [docs/SECURITY_AUDIT.md](docs/SECURITY_AUDIT.md) and [docs/DATA_SOURCES.md](docs/DATA_SOURCES.md).
 
-The included privacy policy remains a template and needs real operator details before public distribution. Do not publish it as a final legal policy until every placeholder is completed and the disclosures are checked against the actual operator and target jurisdictions. CI/static review is not physical-device QA, penetration testing, legal advice or security certification.
+See [docs/PRIVACY.md](docs/PRIVACY.md) for the app's current privacy notice. It describes the implementation and is not a jurisdiction-specific legal opinion. Anyone redistributing the app as a business or commercial service must review the notice and their own legal obligations. CI/static review is not physical-device QA, penetration testing, legal advice or security certification.
