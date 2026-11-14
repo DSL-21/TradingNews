@@ -54,10 +54,10 @@ Instrument matches are deterministic keyword relevance hints. They are not valid
 
 - Every relevant push to `main` runs **Build Trading News APK**: unit tests, Android lint, debug APK compilation and a downloadable CI artifact.
 - Production releases are **manual and deliberate**. Open Actions → **Publish Trading News GitHub Release** → Run workflow, choose `main`, enter `RELEASE`, and provide release notes.
-- The release workflow checks that the repository is Public and all four Android signing secrets exist, then reruns tests/lint, builds a signed release APK, verifies the package/version/certificate fingerprint and creates a versioned GitHub Release.
+- The release workflow checks that the repository is Public and all five Android signing secrets exist, then reruns tests/lint, builds a signed release APK, verifies the package/version/certificate fingerprint and creates a versioned GitHub Release.
 - Increment both `versionCode` and `versionName` in `app/build.gradle.kts` before every new release. Existing tags/releases are never overwritten.
 
-See [docs/RELEASE_SETUP.md](docs/RELEASE_SETUP.md) for signing and publication steps. Do not make the repository Public until you have reviewed its history and completed the owner-specific privacy policy.
+See [docs/RELEASE_SETUP.md](docs/RELEASE_SETUP.md) for generating the new signing key, configuring GitHub Secrets and publishing a release. Do not make the repository Public until you have reviewed the commit history and confirmed no secrets or private material were committed.
 
 ## Build and security
 
