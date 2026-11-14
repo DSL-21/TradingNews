@@ -16,12 +16,23 @@ object NewsWorkScheduler {
     const val UNIQUE_WORK_NAME = "trading_news_periodic_refresh"
 
     fun isAutoRefreshEnabled(context: Context): Boolean =
-        context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
-            .getBoolean(KEY_AUTO_REFRESH, false)
+        readBoolean(context, KEY_AUTO_REFRESH)
 
     fun isAlertsEnabled(context: Context): Boolean =
-        context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
-            .getBoolean(KEY_ALERTS_ENABLED, false)
+        readBoolean(context, KEY_ALERTS_ENABLED)
+
+    private fun readBoolean(context: Context, key: String): Boolean {
+        val preferences = context.applicationContext
+            .getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+        return try {
+            preferences.getBoolean(key, false)
+        } catch (_: ClassCastException) {
+            // A type-corrupted preference should disable background work safely,
+            // not crash the app during Activity startup or notification delivery.
+            preferences.edit().remove(key).apply()
+            false
+        }
+    }
 
     fun setAutoRefreshEnabled(context: Context, enabled: Boolean) {
         context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
