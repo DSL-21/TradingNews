@@ -66,13 +66,13 @@ jobs:
       - name: Read app version and create release tag
         id: version
         run: |
-          VERSION_NAME="$(sed -n 's/.*versionName = "\\([^"]*\\)".*/\\1/p' app/build.gradle.kts | head -1)"
-          VERSION_CODE="$(sed -n 's/.*versionCode = \\([0-9]*\\).*/\\1/p' app/build.gradle.kts | head -1)"
+          VERSION_NAME="$(sed -n 's/.*versionName = "\([^"]*\)".*/\1/p' app/build.gradle.kts | head -1)"
+          VERSION_CODE="$(sed -n 's/.*versionCode = \([0-9]*\).*/\1/p' app/build.gradle.kts | head -1)"
           if [[ -z "$VERSION_NAME" || -z "$VERSION_CODE" ]]; then
             echo "Could not read Android version metadata."
             exit 1
           fi
-          if [[ ! "$VERSION_NAME" =~ ^[0-9]+\\.[0-9]+\\.[0-9]+$ ]]; then
+          if [[ ! "$VERSION_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "versionName must use MAJOR.MINOR.PATCH."
             exit 1
           fi
@@ -111,10 +111,10 @@ jobs:
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          gradle --no-daemon --stacktrace :app:assembleRelease \\
-            -PANDROID_KEYSTORE_PATH="$ANDROID_KEYSTORE_PATH" \\
-            -PANDROID_KEYSTORE_PASSWORD="$ANDROID_KEYSTORE_PASSWORD" \\
-            -PANDROID_KEY_ALIAS="$ANDROID_KEY_ALIAS" \\
+          gradle --no-daemon --stacktrace :app:assembleRelease \
+            -PANDROID_KEYSTORE_PATH="$ANDROID_KEYSTORE_PATH" \
+            -PANDROID_KEYSTORE_PASSWORD="$ANDROID_KEYSTORE_PASSWORD" \
+            -PANDROID_KEY_ALIAS="$ANDROID_KEY_ALIAS" \
             -PANDROID_KEY_PASSWORD="$ANDROID_KEY_PASSWORD"
 
       - name: Verify signed APK, package, and version
@@ -177,10 +177,10 @@ jobs:
           EOF
 
           APK="app/build/outputs/apk/release/app-release.apk"
-          gh release create "$RELEASE_TAG" "$APK#TradingNews-v$RELEASE_VERSION.apk" \\
-            --repo "$GH_REPO" \\
-            --target "$SOURCE_SHA" \\
-            --title "Trading News $RELEASE_VERSION" \\
+          gh release create "$RELEASE_TAG" "$APK#TradingNews-v$RELEASE_VERSION.apk" \
+            --repo "$GH_REPO" \
+            --target "$SOURCE_SHA" \
+            --title "Trading News $RELEASE_VERSION" \
             --notes-file release-notes.md
 
       - name: Remove temporary signing material
