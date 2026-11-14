@@ -33,6 +33,26 @@ data class EconomicEvent(
     val dataStale: Boolean?
 )
 
+data class FreeDeveloperUsage(
+    val plan: String,
+    val accessScope: String,
+    val quotaBasis: String,
+    val dailyLimit: Int,
+    val monthlyLimit: Int,
+    val usedToday: Int,
+    val remainingToday: Int,
+    val usedThisMonth: Int,
+    val remainingThisMonth: Int,
+    val dailyResetsAt: Instant?,
+    val monthlyResetsAt: Instant?,
+    val maxEventsPerResponse: Int,
+    val windowFrom: LocalDate?,
+    val windowTo: LocalDate?,
+    val windowTimezone: String?,
+    val upgradeUrl: String?,
+    val resumeAtUtc: Instant?
+)
+
 data class EconomicCalendarSnapshot(
     val events: List<EconomicEvent>,
     val fetchedAt: Instant,
@@ -40,8 +60,9 @@ data class EconomicCalendarSnapshot(
     val truncated: Boolean,
     val moreOnPaidPlans: Int,
     val attributionName: String,
+    val attributionUrl: String,
     val attributionTerms: String,
-    val attributionDocsUrl: String,
+    val freeDeveloperUsage: FreeDeveloperUsage?,
     val isStale: Boolean
 )
 
@@ -89,7 +110,6 @@ internal object EconomicCalendarParser {
                 eventUrl = safePublisherUrl(optionalString(item, "url")),
                 sourceName = optionalString(item, "source_name")?.take(160),
                 sourceUrl = safePublisherUrl(optionalString(item, "source_url")),
-                // Keep full record-level rights and credit objects intact for the UI/cache.
                 sourceLicenseJson = item.optJSONObject("source_license")?.toString()
                     ?: optionalString(item, "source_license"),
                 sourceRightsJson = item.optJSONObject("source_rights")?.toString()
@@ -105,8 +125,8 @@ internal object EconomicCalendarParser {
             ?: throw IllegalArgumentException("Calendar snapshot is missing provider attribution")
         val attributionName = attribution.optString("source").trim()
         val attributionTerms = attribution.optString("terms").trim()
-        val attributionDocsUrl = safeFinanceCalendarUrl(optionalString(attribution, "docs"))
-            ?: throw IllegalArgumentException("Calendar API documentation link is invalid")
+        val attributionUrl = safeFinanceCalendarUrl(optionalString(attribution, "url"))
+            ?: throw IllegalArgumentException("Calendar attribution URL is invalid")
         require(attributionName.isNotBlank()) { "Calendar attribution source is missing" }
         require(attributionTerms.isNotBlank()) { "Calendar terms notice is missing" }
 
@@ -114,6 +134,7 @@ internal object EconomicCalendarParser {
             ?: throw IllegalArgumentException("Calendar snapshot fetch timestamp is missing")
         val generatedAt = optionalString(root, "generated_at")?.let(::parseInstant)
         val ageSeconds = Duration.between(fetchedAt, now).seconds
+        val usage = root.optJSONObject("free_developer")?.let(::parseUsage)
 
         return EconomicCalendarSnapshot(
             events = events.values.sortedWith(
@@ -126,9 +147,36 @@ internal object EconomicCalendarParser {
             truncated = root.optBoolean("truncated", false),
             moreOnPaidPlans = root.optInt("more_on_paid_plans", 0).coerceAtLeast(0),
             attributionName = attributionName,
+            attributionUrl = attributionUrl,
             attributionTerms = attributionTerms,
-            attributionDocsUrl = attributionDocsUrl,
+            freeDeveloperUsage = usage,
             isStale = ageSeconds < 0 || ageSeconds > staleAfterSeconds
+        )
+    }
+
+    private fun parseUsage(json: JSONObject): FreeDeveloperUsage {
+        val window = json.optJSONObject("window")
+            ?: throw IllegalArgumentException("Free Developer quota window is missing")
+        val plan = json.optString("plan").trim()
+        require(plan.isNotBlank()) { "Free Developer plan name is missing" }
+        return FreeDeveloperUsage(
+            plan = plan.take(80),
+            accessScope = json.optString("access_scope").take(120),
+            quotaBasis = json.optString("quota_basis").take(120),
+            dailyLimit = json.optInt("daily_limit", 0).coerceAtLeast(0),
+            monthlyLimit = json.optInt("monthly_limit", 0).coerceAtLeast(0),
+            usedToday = json.optInt("used_today", 0).coerceAtLeast(0),
+            remainingToday = json.optInt("remaining_today", 0).coerceAtLeast(0),
+            usedThisMonth = json.optInt("used_this_month", 0).coerceAtLeast(0),
+            remainingThisMonth = json.optInt("remaining_this_month", 0).coerceAtLeast(0),
+            dailyResetsAt = optionalString(json, "resets_at")?.let(::parseInstant),
+            monthlyResetsAt = optionalString(json, "monthly_resets_at")?.let(::parseInstant),
+            maxEventsPerResponse = json.optInt("max_events_per_response", 20).coerceAtLeast(0),
+            windowFrom = optionalString(window, "from")?.let(::parseDate),
+            windowTo = optionalString(window, "to")?.let(::parseDate),
+            windowTimezone = optionalString(window, "timezone")?.take(40),
+            upgradeUrl = safeFinanceCalendarUrl(optionalString(json, "upgrade_url")),
+            resumeAtUtc = optionalString(json, "resume_at_utc")?.let(::parseInstant)
         )
     }
 
@@ -144,6 +192,9 @@ internal object EconomicCalendarParser {
 
     private fun parseInstant(value: String): Instant? =
         runCatching { Instant.parse(value) }.getOrNull()
+
+    private fun parseDate(value: String): LocalDate? =
+        runCatching { LocalDate.parse(value) }.getOrNull()
 
     private fun safePublisherUrl(value: String?): String? {
         if (value.isNullOrBlank()) return null
