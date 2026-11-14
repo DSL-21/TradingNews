@@ -90,14 +90,14 @@ class EconomicCalendarParserTest {
     }
 
     @Test
-    fun rejectsMissingAttributionTermsOrInvalidDocumentationHost() {
+    fun rejectsMissingAttributionTermsOrInvalidAttributionHost() {
         val missingTerms = snapshot(event("a", "Event", "2026-11-14", "low", null, "date"))
-            .put("attribution", JSONObject().put("source", "Finance Calendar").put("docs", "https://www.financecalendar.com/api/"))
-        val unsafeDocs = snapshot(event("a", "Event", "2026-11-14", "low", null, "date"))
-            .put("attribution", JSONObject().put("source", "Finance Calendar").put("terms", "terms").put("docs", "https://evil.example/docs"))
+            .put("attribution", JSONObject().put("source", "Finance Calendar").put("url", "https://www.financecalendar.com/"))
+        val unsafeUrl = snapshot(event("a", "Event", "2026-11-14", "low", null, "date"))
+            .put("attribution", JSONObject().put("source", "Finance Calendar").put("terms", "terms").put("url", "https://evil.example/"))
 
         assertFalse(runCatching { EconomicCalendarParser.parse(missingTerms) }.isSuccess)
-        assertFalse(runCatching { EconomicCalendarParser.parse(unsafeDocs) }.isSuccess)
+        assertFalse(runCatching { EconomicCalendarParser.parse(unsafeUrl) }.isSuccess)
     }
 
     @Test
