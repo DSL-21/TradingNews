@@ -48,8 +48,8 @@ jobs:
 
       - name: Verify app version metadata
         run: |
-          VERSION_NAME="$(sed -n 's/.*versionName = "\\([^"]*\\)".*/\\1/p' app/build.gradle.kts | head -1)"
-          VERSION_CODE="$(sed -n 's/.*versionCode = \\([0-9]*\\).*/\\1/p' app/build.gradle.kts | head -1)"
+          VERSION_NAME="$(sed -n 's/.*versionName = "\([^"]*\)".*/\1/p' app/build.gradle.kts | head -1)"
+          VERSION_CODE="$(sed -n 's/.*versionCode = \([0-9]*\).*/\1/p' app/build.gradle.kts | head -1)"
           test -n "$VERSION_NAME"
           test -n "$VERSION_CODE"
           echo "Building Trading News $VERSION_NAME (versionCode $VERSION_CODE)"
