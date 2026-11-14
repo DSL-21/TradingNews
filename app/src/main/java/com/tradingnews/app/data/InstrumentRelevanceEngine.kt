@@ -9,9 +9,9 @@ data class InstrumentMatch(
 ) {
     val band: String
         get() = when {
-            score >= 70 -> "HIGH RELEVANCE"
-            score >= 40 -> "MEDIUM RELEVANCE"
-            else -> "LOW RELEVANCE"
+            score >= 70 -> "STRONG KEYWORD MATCH"
+            score >= 40 -> "SOME KEYWORD MATCH"
+            else -> "WEAK KEYWORD MATCH"
         }
 }
 
