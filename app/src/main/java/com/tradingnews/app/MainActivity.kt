@@ -554,9 +554,9 @@ private fun SettingsScreen(state: TradingNewsUiState, onRefresh: () -> Unit) {
         item {
             SettingsCard {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Economic calendar and market reaction", color = TextMain, fontWeight = FontWeight.SemiBold)
+                    Text("Forex Factory calendar", color = TextMain, fontWeight = FontWeight.SemiBold)
                     Text(
-                        "The Calendar tab opens the official Forex Factory schedule. Native calendar rows are not included because redistribution permission has not been granted. Price-reaction calculations are not shown until a licensed historical price source is connected. No synthetic events or prices are generated.",
+                        "The Calendar tab opens the official Forex Factory calendar and its weekly JSON, ICS and CSV exports directly from the original host. Trading News does not copy or rehost the FEED database. No provider API key is required.",
                         color = TextMuted, fontSize = 11.sp, lineHeight = 17.sp
                     )
                 }
@@ -566,7 +566,7 @@ private fun SettingsScreen(state: TradingNewsUiState, onRefresh: () -> Unit) {
             SettingsCard {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("Privacy and storage", color = TextMain, fontWeight = FontWeight.SemiBold)
-                    Text("The app stores a compact local GDELT headline cache and refresh preferences. Provider API credentials belong on the backend and must never be embedded in the APK.", color = TextMuted, fontSize = 11.sp, lineHeight = 17.sp)
+                    Text("The app stores a compact GDELT headline cache, selected instruments and refresh preferences on this device. It does not require a user account or embed third-party API credentials.", color = TextMuted, fontSize = 11.sp, lineHeight = 17.sp)
                 }
             }
         }
