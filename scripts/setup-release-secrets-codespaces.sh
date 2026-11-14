@@ -25,10 +25,13 @@ cleanup() {
   local status=$?
   unset STORE_PASSWORD KEYSTORE_BASE64 CERT_SHA256 TRADINGNEWS_SIGNING_PASSWORD
   if [[ "$SUCCESS" -eq 1 && "$status" -eq 0 ]]; then
-    rm -rf -- "$WORKDIR"
-    echo
-    echo "Signing secrets were saved in GitHub Actions."
-    echo "Temporary keystore and password files were removed from Codespaces RAM."
+    if [[ -d "$WORKDIR" ]]; then
+      rm -rf -- "$WORKDIR"
+      echo
+      echo "Signing secrets were saved in GitHub Actions."
+      echo "Temporary keystore and password files were removed from Codespaces RAM."
+    fi
+    unset GH_TOKEN
   elif [[ -f "$KEYSTORE_PATH" && -f "$PASSWORD_FILE" ]]; then
     echo
     echo "SETUP DID NOT FINISH."
