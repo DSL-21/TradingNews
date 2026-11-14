@@ -1,60 +1,75 @@
-# One-time Android release signing and GitHub Actions setup
+# One-time Android release and calendar setup
 
-The app can always build a debug APK through the Build Trading News APK workflow. The separate Publish Trading News GitHub Release workflow creates a persistent-signature release APK only when all four repository secrets below are configured.
+This repository uses GitHub Actions for ongoing builds, signed releases and daily calendar publishing. No source ZIP or APK needs to be uploaded manually for normal updates.
 
-## Keep the release key private
+## 1. Private Android release signing key
 
-A PKCS12 release keystore has been generated for this project. Download the keystore and its password from the project owner, keep at least two secure backups, and never upload either file to this repository.
+A new persistent PKCS12 release keystore was created for the repository.
 
-Keystore alias: tradingnews-release  
-Certificate SHA-256 fingerprint: 34:CE:7E:FB:49:06:58:EB:40:7F:A2:D3:33:59:72:A6:DC:A7:13:BF:26:B2:DC:58:E2:B8:DC:39:1B:6A:A5:39
+- File: `TradingNews-release.p12`
+- Separate password file: `TradingNews-keystore-password.txt`
+- Key alias: `tradingnews-release`
+- Certificate SHA-256: `AF:65:0B:1F:30:4C:6C:D6:9F:42:BA:15:5E:B5:44:DF:EB:AF:A6:3F:6D:A6:1C:91:4B:78:C1:11:B0:AC:51:EA`
 
-## Configure the four repository secrets once
+Download both private files from the assistant response and store them securely outside the repository. Keep at least two encrypted backups. Never upload either file to GitHub, add them to the Android app, or paste the password into chat/issues.
 
-The easiest method is to use the supplied PowerShell helper. It uses GitHub CLI to send the secrets directly to GitHub Actions without printing their values.
+## 2. Get a Finance Calendar Free Developer API key
 
-1. Install GitHub CLI and sign in from PowerShell:
+1. Open https://www.financecalendar.com/api/ and create/verify your developer account.
+2. Request/activate the **Free Developer** key according to the provider's current review process.
+3. Keep the key private. It must never be included in the Android source, APK, JSON snapshot, README, or Git commits.
+4. Save the exact key alone in a local UTF-8 text file outside the repository, for example `$HOME\Downloads\FinanceCalendar-api-key.txt`.
 
-   ```powershell
-   gh auth login --hostname github.com --git-protocol https --web
-   ```
+Free Developer limits documented by the provider: 100 successful JSON responses/month, maximum 10/day, 20 event records/response, rolling UTC window today through +6 days, no pagination and no forecast/prior/actual values. This project uses three country-group calls/day (about 90/month). Check the provider's terms and quota before changing the schedule or query count.
 
-   Ensure the authenticated account has Admin access to this repository.
+Provider docs: https://www.financecalendar.com/api/  
+Provider terms: https://www.financecalendar.com/api/terms/
 
-2. Download these two private files from the assistant response and keep them outside the repository:
-   - `TradingNews-release.p12`
-   - `TradingNews-keystore-password.txt`
+## 3. Configure GitHub Actions secrets once
 
-3. Download `scripts/setup-release-secrets.ps1` from this repository, then run it from PowerShell, for example:
+Install GitHub CLI and authenticate with an account that has Admin access to this repository:
 
-   ```powershell
-   .\setup-release-secrets.ps1 `
-     -KeystorePath "$HOME\Downloads\TradingNews-release.p12" `
-     -PasswordFile "$HOME\Downloads\TradingNews-keystore-password.txt"
-   ```
+```powershell
+gh auth login --hostname github.com --git-protocol https --web
+```
 
-The script sets the four required names:
-- `ANDROID_KEYSTORE_BASE64` — base64 of the PKCS12 keystore.
-- `ANDROID_KEYSTORE_PASSWORD` — password from the separate text file.
-- `ANDROID_KEY_ALIAS` — `tradingnews-release`.
-- `ANDROID_KEY_PASSWORD` — the same password for this key.
+Download `scripts/setup-release-secrets.ps1` from this repository. From PowerShell, run:
 
-The values are sent to GitHub with `gh secret set`; the script does not print them. It is safe to rerun if a secret needs to be refreshed. Do not commit the keystore or password file to the repository.
+```powershell
+.\setup-release-secrets.ps1 `
+  -KeystorePath "$HOME\Downloads\TradingNews-release.p12" `
+  -PasswordFile "$HOME\Downloads\TradingNews-keystore-password.txt" `
+  -CalendarApiKeyFile "$HOME\Downloads\FinanceCalendar-api-key.txt"
+```
 
-## What happens after setup
+The script sends secret values through `gh secret set`; it does not print them. It sets:
+- `ANDROID_KEYSTORE_BASE64`
+- `ANDROID_KEYSTORE_PASSWORD`
+- `ANDROID_KEY_ALIAS`
+- `ANDROID_KEY_PASSWORD`
+- `FC_API_KEY`
 
-- Every qualifying push to main triggers the test/debug build.
-- After a successful build, the release workflow checks the four secrets.
-- When all secrets exist, it reruns unit tests and lint, builds the signed release APK, verifies its signature/package/version, and creates a standard GitHub Release named vMAJOR.MINOR.PATCH with the APK attached.
-- If the secrets are not configured, the debug build still succeeds and the signed-release job is skipped with a notice. No source ZIP needs to be uploaded manually.
-- Every future app update must increment both versionCode and versionName. A published release tag is never overwritten.
+You can omit `-CalendarApiKeyFile` if you want to set up signed releases before obtaining the calendar key. The calendar remains empty until `FC_API_KEY` exists and the scheduled/dispatch updater succeeds.
 
-To run the pipeline after adding secrets, open Actions → Build Trading News APK → Run workflow on main. A successful run then triggers the signed release workflow automatically.
+## 4. First signed release and first calendar snapshot
 
-## Public portfolio visibility
+1. Open GitHub Actions → **Build Trading News APK** → Run workflow on main.
+2. The workflow tests and builds the app. After a successful build, **Publish Trading News GitHub Release** checks the signing secrets, rebuilds the signed release APK and creates the standard `vMAJOR.MINOR.PATCH` GitHub Release.
+3. Open Actions → **Update licensed economic calendar** → Run workflow. The first successful run publishes the real schedule snapshot.
+4. Later snapshots update automatically each day at 00:20 UTC. No manual uploads or daily intervention are needed.
 
-The repository is currently private. To make source code and release assets visible to employers, the owner must deliberately switch it to Public under Settings → General → Danger Zone → Change repository visibility. Review the repository first and ensure no private keys or credentials have ever been committed.
+If the release signing secrets are missing, CI still builds a debug APK artifact but skips the signed GitHub Release. A production-style installable APK is produced only after a persistent signing key is configured.
+
+## 5. Make the portfolio/app data publicly accessible
+
+The repository is currently Private. The installed Android app reads the calendar snapshot from:
+
+https://raw.githubusercontent.com/DSL-21/TradingNews/main/data/economic-calendar.json
+
+Anonymous Android clients cannot fetch files from a private repository. To use GitHub as the public portfolio/distribution platform, the repository owner must deliberately switch it to Public in GitHub Settings → General → Danger Zone → Change repository visibility.
+
+Before changing visibility, review all current and historical commits, actions logs, issues and releases to ensure no secrets or private material were ever committed. GitHub Actions secrets remain protected, but anything committed into Git history is not secret merely because the repository was private.
 
 ## Key-loss warning
 
-The private key is the identity used to sign this Android package. Losing it means you cannot sign future versions as an update to installs signed with this key. Keep secure backups and never generate a replacement for this release line unless you intend to publish a different application signing identity.
+The signing key is the application update identity. If it is lost, future updates cannot be signed as the same application identity using this key. Keep secure backups. Never commit the keystore or its password.
