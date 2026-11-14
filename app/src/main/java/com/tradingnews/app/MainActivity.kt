@@ -418,9 +418,9 @@ private fun SettingsScreen(state: TradingNewsUiState) {
                     Text("Economic calendar and market data", color = TextMain, fontWeight = FontWeight.SemiBold)
                     Text(
                         if (BuildConfig.BACKEND_BASE_URL.isBlank()) {
-                            "Native calendar and measured event reactions need your licensed Trading Economics API account and the Trading News backend URL. No sample calendar or synthetic market prices are shown."
+                            "Native in-app calendar data is not connected in this release. The Calendar tab opens the official Forex Factory website. A native feed needs written redistribution permission or another licensed provider and a maintained HTTPS backend."
                         } else {
-                            "Calendar and historical event-reaction data are requested from your configured Trading News backend. Verify provider subscription and data-display rights."
+                            "A custom HTTPS backend URL is configured, but this release does not currently display native calendar events or measured price reactions. Verify the backend, provider licence, and data-display rights before enabling an integration."
                         },
                         color = TextMuted, fontSize = 11.sp, lineHeight = 17.sp
                     )
