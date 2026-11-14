@@ -6,6 +6,8 @@ on:
     branches: [main]
     paths:
       - 'app/**'
+      - 'scripts/**'
+      - 'data/**'
       - '*.gradle.kts'
       - 'gradle.properties'
       - '.github/workflows/build-apk.yml'
@@ -45,6 +47,16 @@ jobs:
             echo "Unexpected sample/demo market data found"
             exit 1
           fi
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+
+      - name: Test calendar snapshot updater
+        run: |
+          python -m compileall -q scripts
+          python -m unittest discover -s scripts -p "test_*.py" -v
 
       - name: Verify app version metadata
         run: |
