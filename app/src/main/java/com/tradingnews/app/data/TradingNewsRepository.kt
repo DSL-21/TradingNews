@@ -307,7 +307,7 @@ class TradingNewsRepository(context: Context) {
         val fetchMutex = Mutex()
         const val GDELT_DOC_URL = "https://api.gdeltproject.org/api/v2/doc/doc"
         const val MARKET_NEWS_QUERY = """(forex OR currency OR "exchange rate" OR inflation OR CPI OR PCE OR "central bank" OR "Federal Reserve" OR FOMC OR ECB OR "Bank of England" OR BOE OR "Bank of Japan" OR BOJ OR "interest rate" OR "monetary policy" OR "bond yield" OR "treasury yield" OR unemployment OR "nonfarm payrolls" OR "jobs report" OR GDP OR PMI OR "retail sales" OR recession OR "stock market" OR equities OR "company earnings" OR "oil price" OR OPEC OR "natural gas" OR "gold price" OR commodities OR "supply chain" OR shipping OR "port strike" OR "trade war" OR tariffs OR sanctions OR election OR "government shutdown" OR "debt ceiling" OR "sovereign debt" OR "banking crisis" OR "credit crisis" OR war OR conflict OR "strait of hormuz" OR "red sea" OR "suez canal" OR earthquake OR flood OR "natural disaster" OR bitcoin OR cryptocurrency)"""
-        const val USER_AGENT = "TradingNews-Android/0.7.0"
+        const val USER_AGENT = "TradingNews-Android/0.7.1"
         const val CONNECT_TIMEOUT_MS = 10_000
         const val READ_TIMEOUT_MS = 15_000
         const val MAX_CACHE_ARTICLE_COUNT = 50
