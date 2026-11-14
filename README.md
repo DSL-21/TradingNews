@@ -1,54 +1,60 @@
-# Trading News — Android 0.4.0
+# Trading News — Android 0.5.0
 
-Trading News is an English-language, dark-mode Android application for market-related headlines and economic-event schedules. Source, tests, scheduled data updates, APK builds and releases are managed directly in GitHub. No source ZIP upload is needed for ongoing development.
+Trading News is a simple English-language Android app for following Forex and broader market news. It combines a live headline feed, fast on-device search, topic filters, a user-configurable instrument watchlist, background refresh, and direct access to the official Forex Factory calendar.
 
-## App features
+The source, automated tests, Android builds and release workflow are managed directly in GitHub. No source ZIP upload is needed for future code changes.
 
-- **Live news:** GDELT DOC 2.0 headline discovery for the previous 24 hours, with direct links to original publishers.
-- **Feed status:** visible LIVE, CACHED, OFFLINE and CONNECTING states.
-- **Topic filters:** Markets, Geopolitics, Energy, Crypto, Companies and Other.
-- **Instrument watchlist:** select supported forex pairs, metals, indices, oil and crypto symbols in Settings. The selection is stored locally and controls relevance matches.
-- **Economic calendar:** native upcoming-event list powered by the Finance Calendar Free Developer schedule API, cached as an attributed JSON snapshot in this repository.
-- **Calendar filters:** All, High, Medium and Low impact; event time shown in device-local time only when a confirmed UTC instant is supplied; date-only/uncertain times stay qualified.
-- **Source credits:** original publisher links and source-level licence/rights metadata are preserved and shown where supplied.
-- **Quota visibility:** the calendar shows actual daily/monthly Free Developer API usage from the provider response.
-- **Background refresh:** optional Android WorkManager refresh on a best-effort 15-minute schedule. Android battery controls may delay it.
-- **Local notifications:** optional local Android notifications for new headlines matched to the selected watchlist. These are not remote push messages.
+## What the app does
 
-## Economic calendar coverage
+- **Live market headlines:** GDELT DOC 2.0 searches the previous 24 hours for Forex, currency, central-bank, inflation, rates, bonds, equity, energy, gold, geopolitical and crypto coverage.
+- **Search:** search currently loaded headlines by title, publisher/source hostname, symbol or relevance reason.
+- **Topic filters:** All, Markets, Geopolitics, Energy, Crypto, Companies and Other.
+- **Instrument filters:** filter headlines by the user's selected Forex pairs, metals, indices, oil and crypto symbols.
+- **Custom watchlist:** choose the instruments that matter in Settings; the selection is stored locally on the device.
+- **Original publisher links:** headlines open the source article rather than copying full article text into the app.
+- **Feed status:** LIVE, CACHED, OFFLINE and CONNECTING states.
+- **Background refresh:** optional Android WorkManager refresh, best-effort every 15 minutes. Android battery controls can delay it.
+- **Local notifications:** optional Android notifications for new headlines matching the watchlist. These are not remote push messages.
+- **Forex Factory calendar:** opens the official calendar and its own weekly export links (JSON, ICS, CSV). The calendar/export data stays hosted by Forex Factory.
 
-The Free Developer schedule plan is limited to 100 successful responses per month, at most 10 per day, 20 event records per response, and a rolling UTC date window from today through six days ahead. Trading News uses three country-group requests each UTC day (about 90 per 30-day month), within the published quota.
+## How Forex Factory is handled
 
-The free schedule response does not include numeric forecasts, prior values or actual release figures. The app does not fabricate or infer them. The provider's truncation and paid-plan counters are displayed so the feed is not presented as exhaustive.
+Forex Factory provides a weekly export directly from its own calendar page:
+- Official calendar: https://www.forexfactory.com/calendar
+- Weekly JSON: https://nfs.faireconomy.media/ff_calendar_thisweek.json
+- Weekly ICS: https://nfs.faireconomy.media/ff_calendar_thisweek.ics
+- Weekly CSV: https://nfs.faireconomy.media/ff_calendar_thisweek.csv
 
-The repository owner must obtain a Finance Calendar API key and configure it once as GitHub Actions secret `FC_API_KEY`. The key is sent through the `X-API-Key` header by the scheduled workflow; it is never embedded in the APK or snapshot.
+The export files are technically accessible over the internet. However, Forex Factory's notices explicitly prohibit copying, republication or redistribution of its calendar schedules and FEED database without prior written consent. Trading News therefore opens the original calendar/export URLs directly. It does not scrape, download, parse, cache or republish those events. This preserves access to the publisher's own current filters, time-zone options, impact levels and event details without creating an unofficial copy.
 
-- API documentation: https://www.financecalendar.com/api/
-- API terms: https://www.financecalendar.com/api/terms/
-- Provider: https://www.financecalendar.com/
+Official notices: https://www.forexfactory.com/notices
 
-The provider's terms require FinanceCalendar attribution and preservation of original publisher links, credits, licences and notices. The event rows retain the source fields returned by the API. Upstream publisher source terms still apply.
+## News source and search behaviour
 
-Forex Factory remains available as an official external calendar link only. Trading News does not scrape or redistribute its FEED calendar.
+GDELT DOC 2.0 provides broad news discovery across monitored online sources. The app loads up to 50 recent headlines from the previous 24 hours. Search and topic/instrument filters are applied to the current loaded feed on the phone; they do not yet submit a separate custom query to GDELT.
 
-## What the app deliberately does not claim
+Instrument matches are deterministic keyword relevance hints. They are not validated market-impact scores, sentiment analysis, causality estimates, price-direction predictions or trading recommendations.
 
-- Keyword relevance is not a validated market-impact score, sentiment signal, prediction or trading recommendation.
-- The OHLC reaction calculator has tests, but no licensed price-history provider is connected; the app does not currently display measured post-event price reactions.
-- Local Android notifications are best-effort WorkManager alerts, not instant Firebase/remote push.
-- GDELT coverage is not exhaustive and headlines may be late, duplicated, incomplete or irrelevant.
+## What is not included
+
+- No fabricated headlines, demo events or synthetic prices.
+- No copying of full third-party article bodies.
+- No native Forex Factory event database without written permission.
+- No licensed price-history provider or measured post-event price-reaction feature.
+- No instant remote push service; notifications are local WorkManager alerts.
 
 ## Automated GitHub workflow
 
-1. A push to main affecting Android app/Gradle source triggers **Build Trading News APK**: unit tests, Android lint and a debug APK artifact.
-2. A successful build triggers **Publish Trading News GitHub Release**. A signed public Release is created only after the repository is Public, all four Android signing secrets plus `FC_API_KEY` are configured, and a recent attributed calendar snapshot is present. The workflow rebuilds/verifies the signed release APK and attaches it to a standard GitHub Release.
-3. A daily scheduled **Update licensed economic calendar** workflow calls the Finance Calendar API using the `FC_API_KEY` repository secret and commits an updated `data/economic-calendar.json` snapshot.
-4. **Test calendar publishing pipeline** validates updater Python tests and snapshot JSON without rebuilding the Android APK for every daily data update.
+1. A push to main affecting Android app/Gradle source triggers **Build Trading News APK**: unit tests, Android lint and an installable debug APK artifact.
+2. A successful build triggers **Publish Trading News GitHub Release**.
+3. The release workflow requires the repository to be Public and the four Android signing secrets: ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS and ANDROID_KEY_PASSWORD.
+4. Once configured, it rebuilds and verifies the signed release APK and creates a standard versioned GitHub Release.
+5. Each app release increments both versionCode and versionName. Existing tags/releases are never overwritten.
 
-One-time setup is documented in [docs/RELEASE_SETUP.md](docs/RELEASE_SETUP.md). The repository must be Public for Android installs to read the raw snapshot anonymously. It is currently private; change visibility only after reviewing the source tree and commit history to ensure no secrets have been committed.
+See [docs/RELEASE_SETUP.md](docs/RELEASE_SETUP.md) for one-time signing setup. The repository is currently private; change its visibility only after checking commit history and confirming that no private material was committed.
 
 ## Build and security
 
-CI runs GDELT/parser, instrument relevance, OHLC calculator and calendar parser tests, Python calendar updater tests, Android lint and APK compilation. See [docs/SECURITY_AUDIT.md](docs/SECURITY_AUDIT.md) and [docs/PRIVACY_POLICY_TEMPLATE.md](docs/PRIVACY_POLICY_TEMPLATE.md).
+CI runs the GDELT parser/URL-safety tests, instrument relevance tests, OHLC calculator tests, Android lint and APK compilation. See [docs/SECURITY_AUDIT.md](docs/SECURITY_AUDIT.md) and [docs/DATA_SOURCES.md](docs/DATA_SOURCES.md).
 
-The privacy policy still needs real operator details. CI/static review is not physical-device QA, penetration testing, legal advice or security certification. Before broad public distribution, test on real Android devices and complete the privacy policy/store declarations.
+The included privacy policy remains a template and needs real operator details before public distribution. CI/static review is not physical-device QA, penetration testing, legal advice or security certification.
