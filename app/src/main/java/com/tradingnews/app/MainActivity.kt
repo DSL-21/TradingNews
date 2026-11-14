@@ -59,6 +59,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -72,8 +73,10 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import com.tradingnews.app.data.FeedStatus
+import com.tradingnews.app.data.InstrumentRelevanceEngine
 import com.tradingnews.app.data.NewsCategories
 import com.tradingnews.app.data.NewsItem
+import com.tradingnews.app.data.NewsPreferences
 import com.tradingnews.app.data.NewsWorkScheduler
 import java.net.URI
 import java.time.Duration
@@ -92,7 +95,6 @@ private val Accent = Color(0xFF35D6B0)
 private val Warning = Color(0xFFFFB454)
 private val Blue = Color(0xFF79AFFF)
 private val Error = Color(0xFFFF647C)
-private const val FOREX_FACTORY_CALENDAR = "https://www.forexfactory.com/calendar"
 private const val GDELT_ABOUT = "https://www.gdeltproject.org/about.html"
 
 class MainActivity : ComponentActivity() {
@@ -172,7 +174,7 @@ private fun TradingNewsApp(viewModel: TradingNewsViewModel) {
                 )
                 AppTab.CALENDAR -> CalendarScreen()
                 AppTab.NEWS -> NewsScreen(state)
-                AppTab.SETTINGS -> SettingsScreen(state)
+                AppTab.SETTINGS -> SettingsScreen(state) { viewModel.refresh(forceRefresh = true) }
             }
         }
     }
@@ -319,13 +321,16 @@ private fun NewsScreen(state: TradingNewsUiState) {
 }
 
 @Composable
-private fun SettingsScreen(state: TradingNewsUiState) {
+private fun SettingsScreen(state: TradingNewsUiState, onRefresh: () -> Unit) {
     val context = LocalContext.current
     var autoRefresh by rememberSaveable {
         mutableStateOf(NewsWorkScheduler.isAutoRefreshEnabled(context))
     }
     var alertsEnabled by rememberSaveable {
         mutableStateOf(NewsWorkScheduler.isAlertsEnabled(context))
+    }
+    var selectedInstruments by remember {
+        mutableStateOf(NewsPreferences.getWatchlist(context))
     }
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -402,6 +407,54 @@ private fun SettingsScreen(state: TradingNewsUiState) {
         item {
             SettingsCard {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Instrument watchlist", color = TextMain, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        "Choose which instruments appear as headline relevance matches. Matches are keyword hints, not trading signals.",
+                        color = TextMuted, fontSize = 11.sp, lineHeight = 16.sp
+                    )
+                    Text(
+                        "${selectedInstruments.size} of ${InstrumentRelevanceEngine.supportedSymbols.size} instruments selected",
+                        color = Accent, fontSize = 10.sp, fontWeight = FontWeight.SemiBold
+                    )
+                    Row(
+                        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        InstrumentRelevanceEngine.supportedSymbols.forEach { symbol ->
+                            FilterChip(
+                                selected = symbol in selectedInstruments,
+                                onClick = {
+                                    val updated = if (symbol in selectedInstruments) {
+                                        selectedInstruments - symbol
+                                    } else {
+                                        selectedInstruments + symbol
+                                    }
+                                    selectedInstruments = updated
+                                    NewsPreferences.setWatchlist(context, updated)
+                                    onRefresh()
+                                },
+                                label = { Text(symbol, fontSize = 9.sp) }
+                            )
+                        }
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        TextButton(
+                            onClick = {
+                                selectedInstruments = InstrumentRelevanceEngine.supportedSymbols.toSet()
+                                NewsPreferences.setWatchlist(context, selectedInstruments)
+                                onRefresh()
+                            }
+                        ) { Text("Select all", color = Accent, fontSize = 11.sp) }
+                    }
+                }
+            }
+        }
+        item {
+            SettingsCard {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("News source", color = TextMain, fontWeight = FontWeight.SemiBold)
                     Text("GDELT DOC 2.0", color = Accent, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                     Text("The feed shows genuine headlines, publisher hosts, and the time GDELT first saw an article. Instrument matches are keyword-based relevance hints, not validated impact or trading signals.", color = TextMuted, fontSize = 11.sp, lineHeight = 17.sp)
@@ -415,13 +468,9 @@ private fun SettingsScreen(state: TradingNewsUiState) {
         item {
             SettingsCard {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Economic calendar and market data", color = TextMain, fontWeight = FontWeight.SemiBold)
+                    Text("Economic calendar and market reaction", color = TextMain, fontWeight = FontWeight.SemiBold)
                     Text(
-                        if (BuildConfig.BACKEND_BASE_URL.isBlank()) {
-                            "Native in-app calendar data is not connected in this release. The Calendar tab opens the official Forex Factory website. A native feed needs written redistribution permission or another licensed provider and a maintained HTTPS backend."
-                        } else {
-                            "A custom HTTPS backend URL is configured, but this release does not currently display native calendar events or measured price reactions. Verify the backend, provider licence, and data-display rights before enabling an integration."
-                        },
+                        "The Calendar tab opens the official Forex Factory schedule. Native calendar rows are not included because redistribution permission has not been granted. Price-reaction calculations are not shown until a licensed historical price source is connected. No synthetic events or prices are generated.",
                         color = TextMuted, fontSize = 11.sp, lineHeight = 17.sp
                     )
                 }
@@ -439,7 +488,7 @@ private fun SettingsScreen(state: TradingNewsUiState) {
             SettingsCard {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("About Trading News", color = TextMain, fontWeight = FontWeight.SemiBold)
-                    Text("Version 0.3.0 • Android", color = TextMuted, fontSize = 11.sp)
+                    Text("Version 0.4.0 • Android", color = TextMuted, fontSize = 11.sp)
                     Text("Informational use only. Relevance scores are deterministic keyword matches. Observed event returns describe price movement after a timestamp; they do not prove causality or predict future prices.", color = TextMuted, fontSize = 11.sp, lineHeight = 17.sp)
                     Text("Feed status: ${statusText(state.status)}", color = TextMuted, fontSize = 10.sp)
                     state.lastUpdated?.let { Text("Last retrieved: ${formatDateTime(it)}", color = TextMuted, fontSize = 10.sp) }
@@ -542,23 +591,20 @@ private fun SettingsCard(content: @Composable () -> Unit) {
 private fun LoadingPanel() {
     Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()) {
         Row(Modifier.padding(18.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-            CircularProgressIndicator(color = Accent, strokeWidth = 2.dp, modifier = Modifier.size(20.dp))
+            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = Accent)
             Spacer(Modifier.width(10.dp))
-            Text("Loading live headlines...", color = TextMuted, fontSize = 12.sp)
+            Text("Loading live headlines...", color = TextMuted, fontSize = 11.sp)
         }
     }
 }
 
 @Composable
-private fun EmptyState(title: String, description: String) {
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(28.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(7.dp)
-    ) {
-        Icon(Icons.Outlined.Newspaper, contentDescription = null, tint = TextMuted, modifier = Modifier.size(30.dp))
-        Text(title, color = TextMain, fontWeight = FontWeight.SemiBold)
-        Text(description, color = TextMuted, fontSize = 12.sp, lineHeight = 17.sp)
+private fun EmptyState(title: String, message: String) {
+    Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(title, color = TextMain, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+            Text(message, color = TextMuted, fontSize = 11.sp, lineHeight = 16.sp)
+        }
     }
 }
 

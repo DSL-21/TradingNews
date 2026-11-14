@@ -1,6 +1,6 @@
-# Trading News 0.3.0 — Static Security and Reliability Review
+# Trading News 0.4.0 — Static Security and Reliability Review
 
-**Review basis:** Android source committed to the repository, manifest, Gradle configuration, GDELT client/parser, WorkManager scheduling, notification path, calendar entry screen, and current CI workflow. This is a static source review plus automated unit tests, Android lint, and a build attempt. It is not a penetration test, dynamic analysis, device QA, legal opinion, or security certification.
+**Review basis:** Android source, manifest, Gradle configuration, GDELT client/parser, local watchlist, WorkManager scheduling, notification path, calendar entry screen, GitHub Actions build and signed-release workflows. This is static source review plus automated unit tests, Android lint, and CI compilation. It is not a penetration test, dynamic analysis, physical-device QA, legal opinion, or security certification.
 
 ## Controls present
 
@@ -8,57 +8,64 @@
 |---|---|
 | Android permissions | INTERNET and optional POST_NOTIFICATIONS; no location, contacts, camera, or microphone permission |
 | Notifications | Runtime permission checked on Android 13+; app-level notification state checked; SecurityException handled if permission is revoked between check and notify |
-| Transport | GDELT endpoint uses HTTPS; Android cleartext traffic is disabled |
+| Transport | GDELT uses HTTPS; Android cleartext traffic is disabled |
 | External article links | HTTPS-only; parser rejects embedded credentials, non-default ports, local host/IP literals and invalid hosts |
-| Network timeouts | 10-second connect timeout and 15-second read timeout |
-| Response limits | 2 MB GDELT response limit |
+| Network timeouts | 10-second connect and 15-second read timeout |
+| Response limits | 2 MB response and bounded parser work |
 | Redirects | Automatic HTTP redirects disabled |
-| Parser bounds | At most 250 input records are examined and 50 valid articles are retained |
-| Article labels | Publisher name shown from the validated URL host rather than trusting the provider's free-form domain label |
-| Deduplication | Duplicate article URLs are discarded |
-| Cache | Compact parsed article metadata only; invalid, future-dated, or older-than-24-hour cache is discarded |
+| Parser bounds | At most 250 input records examined and 50 valid articles retained |
+| Publisher labels | Derived from the validated article URL host, not the provider's free-form domain field |
+| Deduplication | Duplicate article URLs discarded |
+| Cache | Compact parsed fields only; invalid, future-dated, or older-than-24-hour cache discarded |
 | Refresh control | 10-minute local cache and 60-second per-device manual refresh throttle |
-| Feed state | LIVE, CACHED, OFFLINE, and CONNECTING are distinct |
-| Background refresh | Unique WorkManager task with network constraint and 15-minute minimum interval |
-| Local notifications | Opt-in local Android notifications; disabled when background refresh is disabled |
-| Data handling | No account, embedded API secret, advertising SDK, or analytics SDK |
-| Calendar | Official Forex Factory page is opened externally; the app does not scrape or republish its schedule |
+| Feed states | LIVE, CACHED, OFFLINE, and CONNECTING are distinct |
+| Watchlist | User-selected symbols stored in app-private SharedPreferences; no watchlist is sent to GDELT |
+| Background work | Unique WorkManager task, network constraint, 15-minute minimum interval |
+| Notifications | Opt-in local Android notifications; Android 13+ runtime permission checked; SecurityException handled; alerts disabled with background refresh |
+| Calendar | Opens the official Forex Factory site; no scraping or calendar-feed redistribution |
+| Release signing | Persistent PKCS12 private key expected from protected GitHub Actions secrets; keystore is not stored in the repository |
+| CI supply chain | Third-party actions pinned to immutable commit SHAs |
+| Data collection | No account, analytics SDK, advertising SDK, location collection, or API secret embedded in the APK |
 
-## Findings addressed in the 0.3.0 work
+## Findings addressed in the 0.4.0 work
 
-1. **Missing calendar composable:** MainActivity referenced a composable that did not exist. Added a standalone Calendar screen that opens the official provider-hosted calendar and Notices pages, with an explicit data-rights explanation.
-2. **Notification permission race:** Lint identified a missing-permission path at notification delivery. Added explicit permission checks and SecurityException handling.
-3. **Refresh/alert inconsistency:** Disabling automatic refresh now also disables background headline alerts; the alert toggle is disabled while refresh is off.
-4. **Version ambiguity:** App version is incremented to 0.3.0.
-5. **Missing tests:** Added unit tests for instrument relevance matching and observed OHLC post-event calculations, alongside existing parser tests.
-6. **Fabricated fallback data:** No demo headlines or fabricated economic events are shown.
-7. **Unvalidated impact claims:** Keyword-based category and instrument matching are relevance hints only, not a validated impact model or a trading signal.
+1. **Missing calendar screen:** Implemented a provider-hosted calendar entry screen with explicit source/rights notice.
+2. **Notification permission race:** Added permission checks and SecurityException handling for permission revocation between check and delivery.
+3. **Refresh/alert inconsistency:** Disabling background refresh disables local background alerts.
+4. **Dead calendar backend adapter:** Removed the unconfigured native calendar backend/models instead of shipping unused classes that implied a real provider integration.
+5. **User-controlled relevance:** Added a local instrument watchlist and wired it into parsing, cached-feed reprocessing, and the Settings UI.
+6. **Cancellation handling:** Background worker now propagates coroutine cancellation instead of converting it into a retry result.
+7. **Release automation:** Added a two-stage workflow: test/debug build followed by a signed standard GitHub Release once repository signing secrets exist.
+8. **No fabricated data:** No sample headlines, synthetic events, or synthetic price bars are displayed.
+9. **Relevance wording:** Instrument matches are labelled as keyword matches; they are not described as market impact or trading signals.
 
 ## Actual functionality vs prepared modules
 
-- GDELT headline discovery is wired into the Android app.
-- Instrument relevance is wired into headline parsing and cards. It is deterministic keyword matching, not an AI model, sentiment model, or prediction.
-- The observed price-reaction calculator is a standalone utility tested with supplied OHLC bars. There is no connected market-price provider, so it is not currently run on live economic events and is not displayed in the UI.
-- The economic-calendar backend adapter is not configured by default. The Calendar screen opens the official Forex Factory website. Native event redistribution requires written permission or a differently licensed provider.
-- Background notifications are local WorkManager notifications. They are not instant remote push and may be delayed by Android battery management.
+- GDELT live headline discovery is wired to the app.
+- Topic filters and the user-selected instrument watchlist are wired to the headline UI.
+- Background refresh and local Android headline notifications are implemented, subject to Android scheduling and permission controls.
+- The Calendar screen opens the official Forex Factory website. Native calendar data is not included without written permission or an alternative provider licence.
+- The OHLC market-reaction calculator is a tested standalone utility. It is not connected to a live/history price provider and is not displayed as an app feature.
+- Notifications are local WorkManager notifications, not instant remote push.
 
-## Remaining risks and work before broad public release
+## Remaining risks and release requirements
 
-1. **No shared backend:** Each device queries GDELT directly. Deploy a shared backend/cache with monitoring, request limits, abuse controls, operational alerts, and a privacy review before scaling.
-2. **Provider quality:** GDELT is a discovery feed, not a guarantee of completeness or accuracy. Headlines can be duplicated, incomplete, misleading, irrelevant, or late-indexed.
-3. **Publisher rights:** The app links to the publisher. GDELT attribution does not itself grant rights to republish third-party article text or images.
-4. **Forex Factory:** Current Notices prohibit copying, republication, and redistribution of calendar schedules and FEED data without prior written consent. Native integration must remain disabled until the operator has written permission for the exact mobile display and redistribution use.
-5. **No native calendar alerts:** No economic-event alerts are sent because no licensed in-app event source is configured.
-6. **No connected price feed:** The app does not calculate/display actual price reaction. Add a properly licensed market price/history source and event timestamps before presenting this as a product feature.
-7. **No dynamic testing:** No Android device/emulator test matrix, MobSF/dynamic assessment, or external penetration test has been performed.
-8. **Release signing:** CI debug APKs are signed with temporary runner debug certificates. They are installable test artifacts, not production-signed Play Store builds. Store signing must use protected secrets and a persistent private keystore; never commit a keystore or password.
-9. **Privacy policy:** The included privacy policy is a template. Replace every placeholder with the operator's real identity, contact, processing purposes, retention details, provider disclosure, jurisdiction-specific legal basis, and store declarations.
+1. **No central backend:** Every device queries GDELT directly. A shared cache, central rate limiting, health monitoring, and abuse controls are recommended before scaling.
+2. **Provider quality:** GDELT coverage is not exhaustive; data may be duplicated, late, inaccurate, incomplete, or irrelevant.
+3. **Third-party content rights:** The app displays headlines/metadata and links to publishers, not article bodies or images.
+4. **Forex Factory data rights:** Native event schedules, forecasts, actuals, impact values, or reminders must not be copied or redistributed without written permission covering public app use.
+5. **No price-history provider:** Real post-event price reaction is not currently shown. A licensed data source and timestamp-quality review are needed before enabling it.
+6. **No dynamic QA:** No Android device/emulator matrix, accessibility pass, network-transition testing, MobSF/dynamic analysis, or external penetration test has been performed.
+7. **Signing-key custody:** The persistent PKCS12 keystore and its password must be backed up securely by the owner. Losing the private key prevents future updates signed as the same app identity. Never commit it.
+8. **Repository privacy:** This repo is private at the time of the audit. It must be deliberately made public in GitHub Settings for public portfolio visibility.
+9. **Privacy policy:** The included policy is a template. Replace placeholders with real operator identity, contact, legal basis, retention details, third-party disclosures, and accurate declarations before public distribution.
 
 ## Automated tests
 
-The test suite includes:
-- valid HTTPS parsing, rejection of unsafe URLs, invalid timestamps, cache timestamps, sorting, deduplication, bounded results, and topic categorization;
-- deterministic instrument keyword matching, watchlist restriction, unrelated headlines, and stable ordering;
-- observed post-event price calculations from supplied OHLC data and rejection of insufficient/invalid price bars.
+The test suite covers:
+- valid HTTPS article parsing, unsafe URL rejection, timestamp handling, cache timestamp parsing, sorting, deduplication, bounded results, and topic categorization;
+- applying the selected instrument watchlist to parsed articles;
+- deterministic instrument relevance, selected-watchlist behavior, unrelated headlines, and ordering;
+- observed post-event OHLC returns from supplied bars and rejection of invalid/insufficient data.
 
-CI runs unit tests, Android lint, and debug APK compilation. A passing CI run establishes only that the tested source compiles and the tested cases pass; it does not prove every Android version, runtime state, data provider, or attack scenario is safe.
+A passing CI run establishes that tested source paths compile and tests pass. It does not prove every runtime path, device, Android version, network state, provider response, or attack scenario is safe.

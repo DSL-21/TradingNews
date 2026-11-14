@@ -110,6 +110,32 @@ class NewsParserTest {
     }
 
     @Test
+    fun limitsInstrumentMatchesToTheSelectedWatchlist() {
+        val root = JSONObject().put("articles", JSONArray().put(article(
+            title = "US CPI inflation and Federal Reserve interest rates",
+            url = "https://example.com/us-macro",
+            seen = "20261111T123400Z"
+        )))
+
+        val parsed = NewsParser.parse(root, watchlist = setOf("EURUSD"))
+
+        assertEquals(listOf("EURUSD"), parsed.single().instrumentMatches.map { it.symbol })
+    }
+
+    @Test
+    fun selectedEmptyWatchlistDisablesInstrumentMatches() {
+        val root = JSONObject().put("articles", JSONArray().put(article(
+            title = "Bitcoin rises after market update",
+            url = "https://example.com/bitcoin",
+            seen = "20261111T123400Z"
+        )))
+
+        val parsed = NewsParser.parse(root, watchlist = emptySet())
+
+        assertTrue(parsed.single().instrumentMatches.isEmpty())
+    }
+
+    @Test
     fun parserRejectsUrlsContainingCredentialsOrUnsafeSchemes() {
         assertNull(NewsParser.normalizedSafeHttpsUrl("javascript:alert(1)"))
         assertNull(NewsParser.normalizedSafeHttpsUrl("http://example.com"))

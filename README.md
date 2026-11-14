@@ -1,49 +1,58 @@
-# Trading News — Android 0.3.0
+# Trading News — Android 0.4.0
 
-Trading News is an English-language, dark-mode Android app for discovering market-related news headlines and opening the official Forex Factory calendar.
+Trading News is an English-language, dark-mode Android application for discovering current market-related headlines, filtering them by topic and instrument, and opening the official Forex Factory economic calendar.
 
-## Working functionality
+## App features
 
-- **Live news discovery:** GDELT DOC 2.0 article-list queries for a rolling 24-hour window.
-- **Publisher links:** the app displays a headline, publisher host, GDELT-seen timestamp, and an HTTPS link to the original publisher. It does not republish full article bodies or images.
-- **Feed reliability:** explicit LIVE, CACHED, OFFLINE, and CONNECTING states; bounded response parsing; compact local cache; 10-minute cache lifetime; 24-hour maximum cache age; 60-second per-device manual-refresh throttle.
-- **Topic filters:** Markets, Geopolitics, Energy, Crypto, Companies, and Other. These are keyword-based navigation labels.
-- **Instrument relevance:** deterministic keyword matches for supported forex pairs, metals, indices, oil, and crypto symbols. Scores are relevance hints only, not impact ratings, sentiment, price direction, or trading signals.
-- **Background refresh:** optional WorkManager refresh on a best-effort 15-minute schedule. Android battery controls and Doze may delay it.
-- **Local notifications:** optional local Android notifications for newly discovered headlines with keyword matches. This is not Firebase/remote push and requires the user's notification permission on Android 13+.
+- **Live news:** GDELT DOC 2.0 headline discovery for the previous 24 hours, with direct links to original publishers.
+- **Feed status:** visible LIVE, CACHED, OFFLINE, and CONNECTING states.
+- **Topic filters:** Markets, Geopolitics, Energy, Crypto, Companies, and Other.
+- **Instrument watchlist:** select supported forex pairs, metals, indices, oil, and crypto symbols in Settings. The selection is stored locally and controls which relevance matches are shown.
+- **Background refresh:** optional Android WorkManager refresh on a best-effort 15-minute schedule. Android battery controls may delay it.
+- **Local notifications:** optional local Android notifications for new headlines that match the selected watchlist. These are not remote push messages.
+- **Economic calendar:** opens the original Forex Factory calendar in the browser. The app does not scrape, copy, cache, or redistribute its calendar data.
 
-## Economic calendar
+## What the app deliberately does not claim
 
-The Calendar screen opens the official Forex Factory calendar and Notices pages:
-- https://www.forexfactory.com/calendar
-- https://www.forexfactory.com/notices
-
-The app does not scrape, download, cache, copy, or republish Forex Factory calendar schedules. Native event rows, forecast/previous/actual values, impact levels, and in-app event reminders are not enabled. They require written permission covering public mobile-app display and redistribution from Fair Economy, Inc., or a different provider whose licence explicitly permits these uses.
-
-## Market reaction analysis
-
-A pure calculation module can calculate observed post-event returns from real OHLC minute bars supplied to it. It is **not connected to a live price/history provider or the app UI** in 0.3.0. The application does not currently calculate or display measured market impact. No synthetic price bars or fabricated impact figures are used.
+- Keyword relevance is not a validated market-impact score, sentiment signal, prediction, or trading recommendation.
+- A standalone OHLC reaction calculator is covered by unit tests, but no licensed price-history provider is connected; the app does not currently display measured post-event price reactions.
+- Native Forex Factory event rows and reminders are not included without written redistribution permission.
+- GDELT coverage is not exhaustive, and its indexed headlines may be late, duplicated, incomplete, or irrelevant.
 
 ## Data sources
 
-GDELT DOC 2.0 is queried directly from each device. The app attributes the GDELT Project in Settings and links headlines to original publisher pages. GDELT coverage is not exhaustive, and its search results may be duplicated, incomplete, late, or irrelevant.
+- GDELT DOC 2.0: https://api.gdeltproject.org/api/v2/doc/doc
+- GDELT project and attribution: https://www.gdeltproject.org/about.html
+- Official Forex Factory calendar: https://www.forexfactory.com/calendar
+- Forex Factory Notices: https://www.forexfactory.com/notices
 
-- GDELT DOC API overview: https://blog.gdeltproject.org/gdelt-doc-2-0-api-debuts/
-- GDELT project and terms: https://www.gdeltproject.org/about.html
+The client uses HTTPS, bounded responses, URL validation, duplicate removal, a compact local cache, a 10-minute cache lifetime, a 24-hour maximum cache age, and a 60-second per-device manual-refresh throttle. Before scaling to a large public audience, a shared backend/cache with central rate controls and monitoring is recommended.
 
-For broad public distribution, a shared backend/cache with monitoring, abuse controls, and request-rate management is recommended. The current client-side cache/throttle is per device and is not a substitute for server-side rate controls.
+## Automated build and GitHub Release
 
-## Build and tests
+1. Every push to main that changes Android app source or Gradle build files triggers **Build Trading News APK**.
+2. The workflow runs unit tests and Android lint, then produces a debug APK artifact for testing.
+3. After that successful workflow, **Publish Trading News GitHub Release** checks whether the persistent release-signing secrets are configured.
+4. Once signing is configured, the release workflow reruns unit tests and lint, builds a signed release APK, verifies its certificate/package/version, and publishes a standard GitHub Release with the APK attached.
+5. Each app release must increment both versionCode and versionName. Existing releases are never overwritten.
 
-Open **Actions** and select **Build Trading News APK**. CI runs:
-- unit tests for news parsing and URL validation,
-- tests for instrument relevance mapping,
-- tests for observed price-reaction calculations,
+See [docs/RELEASE_SETUP.md](docs/RELEASE_SETUP.md) for the one-time signing-key and GitHub Actions setup. No ZIP source archive has to be manually uploaded for future changes.
+
+## Build checks
+
+CI runs:
+- news parser/URL-safety tests,
+- instrument-watchlist parsing tests,
+- instrument relevance tests,
+- observed OHLC reaction calculator tests,
 - Android lint,
-- debug APK compilation.
+- debug APK compilation,
+- release lint and signed release build when signing secrets are configured.
 
-The resulting APK is a **debug build** signed with a temporary runner debug certificate. It is suitable for installation and testing, not a production-signed Google Play release. Production distribution requires a protected persistent signing key, complete privacy policy/support details, store declarations, device QA, dependency assessment, and external mobile security review.
+## Security, privacy, and portfolio publication
 
-## Security review and privacy
+See [docs/SECURITY_AUDIT.md](docs/SECURITY_AUDIT.md) and [docs/PRIVACY_POLICY_TEMPLATE.md](docs/PRIVACY_POLICY_TEMPLATE.md). The privacy document remains a template and must be completed before public distribution.
 
-See the security audit and privacy-policy template in the docs directory. The static review and CI tests are not a penetration test, dynamic analysis, device QA, legal opinion, or security certification. Complete the privacy template before public distribution.
+The repository is currently private. To use it as a public portfolio project, change repository visibility to Public in GitHub Settings after reviewing the source and documentation. Do not commit the release keystore, its password, API credentials, or other secrets.
+
+Static review and CI are not a penetration test, dynamic analysis, physical-device QA, legal opinion, or security certification.

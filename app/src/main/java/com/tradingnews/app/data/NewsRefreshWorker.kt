@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import java.io.IOException
+import java.util.concurrent.CancellationException
 
 class NewsRefreshWorker(
     appContext: Context,
@@ -27,6 +28,8 @@ class NewsRefreshWorker(
                 NewsNotifications.showNewHeadlines(applicationContext, newArticles)
             }
             Result.success()
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (error: IOException) {
             if (runAttemptCount >= MAX_RETRIES) Result.failure() else Result.retry()
         } catch (_: Exception) {

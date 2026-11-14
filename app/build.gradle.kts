@@ -4,23 +4,38 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+val releaseStorePath = providers.gradleProperty("ANDROID_KEYSTORE_PATH").orNull
+val releaseStorePassword = providers.gradleProperty("ANDROID_KEYSTORE_PASSWORD").orNull
+val releaseKeyAlias = providers.gradleProperty("ANDROID_KEY_ALIAS").orNull
+val releaseKeyPassword = providers.gradleProperty("ANDROID_KEY_PASSWORD").orNull
+
 android {
     namespace = "com.tradingnews.app"
     compileSdk = 36
+
+    signingConfigs {
+        create("release") {
+            if (!releaseStorePath.isNullOrBlank()) {
+                storeFile = file(releaseStorePath)
+            }
+            storePassword = releaseStorePassword
+            keyAlias = releaseKeyAlias
+            keyPassword = releaseKeyPassword
+        }
+    }
 
     defaultConfig {
         applicationId = "com.tradingnews.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 3
-        versionName = "0.3.0"
+        versionCode = 4
+        versionName = "0.4.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        val backendUrl = providers.gradleProperty("TRADING_NEWS_BACKEND_URL").orElse("").get()
-        buildConfigField("String", "BACKEND_BASE_URL", "\"$backendUrl\"")
     }
 
     buildTypes {
         release {
+            signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),

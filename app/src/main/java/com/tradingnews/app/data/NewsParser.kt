@@ -28,7 +28,10 @@ internal object NewsParser {
     private fun wordPattern(term: String) =
         Regex("(?<![\\p{L}\\p{N}])${Regex.escape(term)}(?![\\p{L}\\p{N}])")
 
-    fun parse(root: JSONObject): List<NewsItem> {
+    fun parse(
+        root: JSONObject,
+        watchlist: Set<String> = InstrumentRelevanceEngine.supportedSymbols.toSet()
+    ): List<NewsItem> {
         val articles = root.optJSONArray("articles") ?: return emptyList()
         val seenUrls = HashSet<String>()
         val parsed = ArrayList<NewsItem>(minOf(articles.length(), MAX_ARTICLES))
@@ -50,7 +53,7 @@ internal object NewsParser {
                 seenAt = seenAt,
                 url = url,
                 category = classifyCategory(title),
-                instrumentMatches = InstrumentRelevanceEngine.match(title)
+                instrumentMatches = InstrumentRelevanceEngine.match(title, watchlist)
             )
         }
 

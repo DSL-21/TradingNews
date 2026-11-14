@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   test-and-build:
-    name: Test and build Trading News 0.3.0
+    name: Test and build Trading News 0.4.0
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
@@ -46,16 +46,24 @@ jobs:
             exit 1
           fi
 
+      - name: Verify app version metadata
+        run: |
+          VERSION_NAME="$(sed -n 's/.*versionName = "\\([^"]*\\)".*/\\1/p' app/build.gradle.kts | head -1)"
+          VERSION_CODE="$(sed -n 's/.*versionCode = \\([0-9]*\\).*/\\1/p' app/build.gradle.kts | head -1)"
+          test -n "$VERSION_NAME"
+          test -n "$VERSION_CODE"
+          echo "Building Trading News $VERSION_NAME (versionCode $VERSION_CODE)"
+
       - name: Run unit tests and Android lint
         run: gradle --no-daemon --stacktrace :app:testDebugUnitTest :app:lintDebug
 
       - name: Build debug APK
         run: gradle --no-daemon --stacktrace :app:assembleDebug
 
-      - name: Upload installable APK
+      - name: Upload installable test APK
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: TradingNews-v0.3.0-debug-apk
+          name: TradingNews-v0.4.0-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
