@@ -8,3 +8,6 @@ app/build/
 *.apk
 *.aab
 *.p12
+*keystore-password*.txt
+*calendar-api-key*.txt
+*financecalendar-api-key*.txt
