@@ -1,4 +1,4 @@
-# Trading News 0.7.0 — Static Security and Reliability Review
+# Trading News 0.7.1 — Static Security and Reliability Review
 
 **Review basis:** Android source, manifest, Gradle configuration, GDELT client/parser, local headline search, topic/instrument filters, local watchlist, WorkManager scheduling, notification path, official Forex Factory link/export screen, GitHub Actions build and release workflows. This is static source review plus automated unit tests, Android lint and CI compilation. It is not a penetration test, dynamic analysis, physical-device QA, legal opinion or security certification.
 
@@ -44,8 +44,10 @@
 7. **Network handling:** Require JSON media types and cap the actual streamed response body to 2 MB, including when Content-Length is absent.
 8. **Cache clearing:** Clear the per-device request throttle together with cached news so the user can refresh immediately after clearing.
 9. **Market scope:** Expand the GDELT query to cover macro releases, central banks, rates, commodities, trade, supply chains, geopolitical shocks and crypto.
-10. **Versioning:** Increment Android versionCode and versionName to 7 / 0.7.0.
-11. **Release automation:** Production publishing requires an explicit manual confirmation and the persistent signing secrets.
+10. **Cache/input hardening:** Reject article URLs longer than 4,096 characters before they can enter SharedPreferences; malformed boolean and watchlist preferences fall back to safe defaults.
+11. **Background reliability:** Periodic refresh uses WorkManager retry/backoff for transient failures instead of a fixed five-attempt cutoff.
+12. **Versioning:** Increment Android versionCode and versionName to 8 / 0.7.1.
+13. **Release automation:** Production publishing requires an explicit manual confirmation and the persistent signing secrets.
 
 ## Actual functionality vs prepared modules
 
