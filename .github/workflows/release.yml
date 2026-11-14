@@ -54,11 +54,12 @@ jobs:
           STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          CERT_SHA256: ${{ secrets.ANDROID_CERT_SHA256 }}
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          for name in KEYSTORE STORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+          for name in KEYSTORE STORE_PASSWORD KEY_ALIAS KEY_PASSWORD CERT_SHA256; do
             if [[ -z "${!name}" ]]; then
               echo "::error::Required Android signing secret is missing: $name"
               exit 1
@@ -139,6 +140,7 @@ jobs:
         id: apk
         env:
           VERSION_NAME: ${{ steps.version.outputs.version }}
+          EXPECTED_CERT_SHA256: ${{ secrets.ANDROID_CERT_SHA256 }}
         run: |
           set -euo pipefail
           APK="app/build/outputs/apk/release/app-release.apk"
@@ -147,7 +149,6 @@ jobs:
           test -s "$APK"
           VERIFY_OUTPUT="$("$APKSIGNER" verify --verbose --print-certs "$APK" 2>&1)"
           printf '%s\n' "$VERIFY_OUTPUT"
-          EXPECTED_CERT_SHA256="AF:65:0B:1F:30:4C:6C:D6:9F:42:BA:15:5E:B5:44:DF:EB:AF:A6:3F:6D:A6:1C:91:4B:78:C1:11:B0:AC:51:EA"
           if ! grep -Fqi "$EXPECTED_CERT_SHA256" <<< "$VERIFY_OUTPUT"; then
             echo "::error::Unexpected Android release signing certificate."
             exit 1
@@ -184,7 +185,7 @@ jobs:
           ## Data limitations
           - Instrument matches are keyword relevance hints, not trading signals.
           - Forex Factory calendar exports remain hosted by the original publisher; this app does not copy or redistribute FEED data.
-          - No licensed price-history source is configured, so measured event-price reactions are not shown.
+          - No broker or price feed is connected; instrument matches are keyword relevance hints, not measured price impact or trading signals.
 
           ## Integrity
           - Source commit: $SOURCE_SHA
