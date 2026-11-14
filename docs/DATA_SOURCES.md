@@ -51,9 +51,9 @@ These are useful primary sources for future source-specific news feeds or direct
 
 Official-source RSS is a good next expansion if direct central-bank and macro release headlines are needed. Any additional feed should be added with source attribution, link validation, response limits and tests.
 
-## 4. Market price history
+## 4. Broker and price-feed scope
 
-The repository contains a standalone OHLC reaction calculator with tests. No licensed live or historical market-price provider is connected to the app. The app therefore does not display measured post-event price reactions or synthetic prices.
+Trading News does not connect to a broker, trading account, terminal, exchange account or broker-specific price API. It does not request prices, balances or trading permissions. The app is a news-discovery and reading tool; instrument labels are keyword relevance hints, not measured price impact or trading signals.
 
 ## 5. Data interpretation
 
