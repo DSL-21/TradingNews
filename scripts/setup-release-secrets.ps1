@@ -57,8 +57,12 @@ try {
             $repoRoot = [System.IO.Path]::GetFullPath(($repoRootOutput | Select-Object -First 1))
         }
     }
-    if ($repoRoot -and $resolvedDirectory.StartsWith($repoRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
-        throw "Signing material must be stored outside the repository. Use the default TradingNewsSigning folder under your home directory."
+    if ($repoRoot) {
+        $repoPrefix = $repoRoot.TrimEnd([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar) + [System.IO.Path]::DirectorySeparatorChar
+        if ($resolvedDirectory.Equals($repoRoot, [System.StringComparison]::OrdinalIgnoreCase) -or
+            $resolvedDirectory.StartsWith($repoPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+            throw "Signing material must be stored outside the repository. Use the default TradingNewsSigning folder under your home directory."
+        }
     }
 
     $hasKeystore = Test-Path -LiteralPath $KeystorePath -PathType Leaf
@@ -88,7 +92,11 @@ try {
             "-dname", "CN=Trading News Release, O=DSL-21, C=CZ", "-noprompt"
         )
         & $keytoolPath @generateArgs
-        Assert-LastExitCode "generating the Android release keystore"
+        if ($LASTEXITCODE -ne 0) {
+            Remove-Item -LiteralPath $KeystorePath -Force -ErrorAction SilentlyContinue
+            Remove-Item -LiteralPath $PasswordFile -Force -ErrorAction SilentlyContinue
+            Assert-LastExitCode "generating the Android release keystore"
+        }
     } else {
         $password = [System.IO.File]::ReadAllText((Resolve-Path -LiteralPath $PasswordFile).Path).Trim()
         if ([string]::IsNullOrWhiteSpace($password)) {
