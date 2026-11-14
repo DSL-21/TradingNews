@@ -38,6 +38,9 @@ import androidx.compose.material.icons.outlined.Newspaper
 import androidx.compose.material.icons.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.ShowChart
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -197,7 +200,7 @@ private fun AppHeader(status: FeedStatus, refreshing: Boolean, onRefresh: () -> 
             Spacer(Modifier.width(10.dp))
             Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
                 Text("TRADING NEWS", fontSize = 15.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.1.sp, color = TextMain)
-                Text("MARKET INTELLIGENCE", fontSize = 9.sp, letterSpacing = 1.3.sp, color = TextMuted)
+                Text("FOREX & MARKET NEWS", fontSize = 9.sp, letterSpacing = 1.3.sp, color = TextMuted)
             }
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -285,7 +288,11 @@ private fun CalendarScreen() {
 
 @Composable
 private fun NewsScreen(state: TradingNewsUiState) {
+    val context = LocalContext.current
     var selectedCategory by rememberSaveable { mutableStateOf(NewsCategories.ALL) }
+    var selectedInstrument by rememberSaveable { mutableStateOf("ALL") }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    val watchlist = remember { NewsPreferences.getWatchlist(context).sorted() }
     val filters = listOf(
         NewsCategories.ALL to "All",
         NewsCategories.MARKETS to "Markets",
@@ -295,11 +302,63 @@ private fun NewsScreen(state: TradingNewsUiState) {
         NewsCategories.COMPANIES to "Companies",
         NewsCategories.OTHER to "Other"
     )
-    val filtered = state.articles.filter { selectedCategory == NewsCategories.ALL || it.category == selectedCategory }
+    val query = searchQuery.trim()
+    val filtered = state.articles.filter { article ->
+        val matchesSearch = query.isBlank() ||
+            article.title.contains(query, ignoreCase = true) ||
+            article.source.contains(query, ignoreCase = true) ||
+            article.instrumentMatches.any { match ->
+                match.symbol.contains(query, ignoreCase = true) ||
+                    match.reasons.any { it.contains(query, ignoreCase = true) }
+            }
+        val matchesCategory = selectedCategory == NewsCategories.ALL || article.category == selectedCategory
+        val matchesInstrument = selectedInstrument == "ALL" ||
+            article.instrumentMatches.any { it.symbol == selectedInstrument }
+        matchesSearch && matchesCategory && matchesInstrument
+    }
+
     Column(Modifier.fillMaxSize()) {
-        Column(Modifier.padding(horizontal = 16.dp, vertical = 13.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            SectionTitle("BREAKING NEWS", "Headlines across markets and global events")
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+        Column(
+            Modifier.padding(horizontal = 16.dp, vertical = 13.dp),
+            verticalArrangement = Arrangement.spacedBy(9.dp)
+        ) {
+            SectionTitle("MARKET NEWS", "Search headlines and filter by topic or instrument")
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it.take(120) },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                placeholder = { Text("Search headlines, sources or symbols", fontSize = 12.sp) },
+                leadingIcon = {
+                    Icon(Icons.Outlined.Search, contentDescription = null, tint = TextMuted)
+                },
+                trailingIcon = {
+                    if (searchQuery.isNotBlank()) {
+                        TextButton(
+                            onClick = { searchQuery = "" },
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                        ) {
+                            Text("Clear", color = Accent, fontSize = 10.sp)
+                        }
+                    }
+                },
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = TextMain,
+                    unfocusedTextColor = TextMain,
+                    focusedContainerColor = Panel,
+                    unfocusedContainerColor = Panel,
+                    focusedBorderColor = Accent,
+                    unfocusedBorderColor = Border,
+                    cursorColor = Accent,
+                    focusedPlaceholderColor = TextMuted,
+                    unfocusedPlaceholderColor = TextMuted
+                )
+            )
+            Row(
+                Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(7.dp)
+            ) {
                 filters.forEach { (key, label) ->
                     FilterChip(
                         selected = selectedCategory == key,
@@ -308,14 +367,41 @@ private fun NewsScreen(state: TradingNewsUiState) {
                     )
                 }
             }
+            Row(
+                Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(7.dp)
+            ) {
+                FilterChip(
+                    selected = selectedInstrument == "ALL",
+                    onClick = { selectedInstrument = "ALL" },
+                    label = { Text("All instruments", fontSize = 10.sp) }
+                )
+                watchlist.forEach { symbol ->
+                    FilterChip(
+                        selected = selectedInstrument == symbol,
+                        onClick = { selectedInstrument = symbol },
+                        label = { Text(symbol, fontSize = 10.sp) }
+                    )
+                }
+            }
+            Text(
+                "${filtered.size} matching headlines",
+                color = TextMuted,
+                fontSize = 10.sp
+            )
         }
         when {
             state.isLoading && state.articles.isEmpty() -> LoadingPanel()
-            filtered.isEmpty() -> EmptyState("No headlines in this category", if (state.articles.isEmpty()) state.notice else "Try another category or refresh the feed.")
+            filtered.isEmpty() -> EmptyState(
+                if (state.articles.isEmpty()) "No headlines available" else "No matching headlines",
+                if (state.articles.isEmpty()) state.notice else "Try a different search, category or instrument, or refresh the feed."
+            )
             else -> LazyColumn(
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 20.dp),
                 verticalArrangement = Arrangement.spacedBy(9.dp)
-            ) { items(filtered, key = { it.id }) { NewsCard(it, expanded = true) } }
+            ) {
+                items(filtered, key = { it.id }) { NewsCard(it, expanded = true) }
+            }
         }
     }
 }
