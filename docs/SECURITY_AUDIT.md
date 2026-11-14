@@ -27,7 +27,7 @@
 | Background work | Unique WorkManager task with network constraint and 15-minute minimum interval |
 | Notifications | Opt-in local Android notifications; Android 13+ runtime permission checked; alerts disabled with background refresh |
 | Forex Factory data | Official calendar and export links are opened directly; no export fetch, parser, local copy, cache or rehosting exists in the app |
-| Release signing | Persistent PKCS12 private key supplied through protected GitHub Actions secrets; keystore is not committed |
+| Release signing | Persistent PKCS12 private key is generated on the owner's PC and supplied through protected GitHub Actions secrets; the keystore is not committed |
 | CI supply chain | Third-party Actions pinned to immutable commit SHAs |
 | Data collection | No account, analytics SDK, advertising SDK or location collection |
 
@@ -64,7 +64,7 @@
 6. **No dynamic QA:** No Android device/emulator matrix, accessibility pass, network-transition testing, MobSF/dynamic analysis or external penetration test has been performed.
 7. **Signing-key custody:** Losing the persistent private key prevents updates signed with the same app identity. Never commit the keystore or password.
 8. **Repository visibility:** The repository remains Private until its owner deliberately changes it to Public. Public GitHub Releases and the portfolio are not visible to employers while it remains private.
-9. **Privacy policy:** The included policy remains a template. Replace placeholders with real operator identity, contact, legal basis, retention details, provider disclosures and store declarations before public distribution.
+9. **Privacy notice:** The repository includes an implementation-based privacy notice. A business redistributing the app should review its operator identity, jurisdiction-specific legal basis, provider disclosures and retention obligations.
 
 ## Automated tests
 
