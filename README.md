@@ -1,4 +1,4 @@
-# Trading News — Android 0.7.0
+# Trading News — Android 0.7.1
 
 Trading News is a simple English-language, broker-independent Android app for discovering Forex and broader market headlines. It combines a live news feed, on-device search, topic and instrument filters, an optional local watchlist, best-effort background refresh, and a direct link to the official Forex Factory calendar. It does not connect to a broker, request account credentials or show fabricated price-impact scores.
 
