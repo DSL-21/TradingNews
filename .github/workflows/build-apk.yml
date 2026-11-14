@@ -10,6 +10,10 @@ on:
       - 'gradle.properties'
       - '.github/workflows/build-apk.yml'
 
+concurrency:
+  group: android-build-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
