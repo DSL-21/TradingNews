@@ -354,9 +354,10 @@ private fun SettingsScreen(state: TradingNewsUiState) {
                         }
                         Switch(
                             checked = autoRefresh,
-                            onCheckedChange = {
-                                autoRefresh = it
-                                NewsWorkScheduler.setAutoRefreshEnabled(context, it)
+                            onCheckedChange = { enabled ->
+                                autoRefresh = enabled
+                                NewsWorkScheduler.setAutoRefreshEnabled(context, enabled)
+                                if (!enabled) alertsEnabled = false
                             }
                         )
                     }
@@ -368,10 +369,18 @@ private fun SettingsScreen(state: TradingNewsUiState) {
                     ) {
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                             Text("Background headline alerts", color = TextMain, fontWeight = FontWeight.SemiBold)
-                            Text("Local Android notifications for new headlines matched to supported instruments. This is not remote Firebase push.", color = TextMuted, fontSize = 11.sp, lineHeight = 16.sp)
+                            Text(
+                                if (autoRefresh) {
+                                    "Local Android notifications for keyword-matched headlines. This is not remote Firebase push and may be delayed by Android battery controls."
+                                } else {
+                                    "Enable automatic news refresh to receive background headline alerts."
+                                },
+                                color = TextMuted, fontSize = 11.sp, lineHeight = 16.sp
+                            )
                         }
                         Switch(
                             checked = alertsEnabled,
+                            enabled = autoRefresh,
                             onCheckedChange = { enabled ->
                                 if (!enabled) {
                                     alertsEnabled = false
@@ -430,7 +439,7 @@ private fun SettingsScreen(state: TradingNewsUiState) {
             SettingsCard {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("About Trading News", color = TextMain, fontWeight = FontWeight.SemiBold)
-                    Text("Version 0.2.0 • Android", color = TextMuted, fontSize = 11.sp)
+                    Text("Version 0.3.0 • Android", color = TextMuted, fontSize = 11.sp)
                     Text("Informational use only. Relevance scores are deterministic keyword matches. Observed event returns describe price movement after a timestamp; they do not prove causality or predict future prices.", color = TextMuted, fontSize = 11.sp, lineHeight = 17.sp)
                     Text("Feed status: ${statusText(state.status)}", color = TextMuted, fontSize = 10.sp)
                     state.lastUpdated?.let { Text("Last retrieved: ${formatDateTime(it)}", color = TextMuted, fontSize = 10.sp) }
