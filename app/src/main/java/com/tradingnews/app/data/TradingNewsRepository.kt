@@ -121,8 +121,10 @@ class TradingNewsRepository(context: Context) {
 
     suspend fun load(forceRefresh: Boolean): NewsFeed = fetchMutex.withLock {
         withContext(Dispatchers.IO) {
-        val generationAtStart = getCacheGeneration()
-        val cached = readCachedFeed()
+        val (generationAtStart, cached) = synchronized(CACHE_MUTATION_LOCK) {
+            val cachedFeed = readCachedFeed()
+            safeLong(KEY_CACHE_GENERATION) to cachedFeed
+        }
         val now = Instant.now()
         val lastFetch = safeLong(KEY_LAST_FETCH_EPOCH)
         val secondsSinceLastFetch = now.epochSecond - lastFetch
