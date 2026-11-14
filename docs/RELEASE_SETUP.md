@@ -11,7 +11,7 @@ A persistent PKCS12 release keystore has been generated for the repository.
 - Key alias: `tradingnews-release`
 - Certificate SHA-256: `AF:65:0B:1F:30:4C:6C:D6:9F:42:BA:15:5E:B5:44:DF:EB:AF:A6:3F:6D:A6:1C:91:4B:78:C1:11:B0:AC:51:EA`
 
-Download both private files from the assistant response and store them securely outside the repository. Keep at least two encrypted backups. Never upload either file to GitHub, add them to the Android app or paste the password into chat/issues.
+The release workflow is pinned to the certificate fingerprint shown above. Use only the matching original keystore and password file supplied when this signing identity was created. First verify that both files are actually available and that the keystore certificate fingerprint matches the value above. Keep at least two encrypted backups. Never upload either file to GitHub, add them to the Android app or paste the password into chat/issues. Do not generate a replacement keystore unless you deliberately migrate the signing identity and update the expected certificate fingerprint; the replacement will not match existing app installations.
 
 ## 2. Configure GitHub Actions secrets once
 
@@ -44,7 +44,7 @@ The repository is currently Private. To use GitHub as a public portfolio and let
 
 Before changing visibility, review current and historical commits, Actions logs, issues and releases to ensure no secrets or private material were ever committed. GitHub Actions secrets remain protected, but anything committed into Git history is not secret merely because the repository was private.
 
-The signed-release workflow checks that the repository is Public before publishing a public GitHub Release.
+The signed-release workflow checks that the repository is Public before publishing a public GitHub Release. The workflow does not change repository visibility automatically; only the repository owner should do that after a history/security review.
 
 ## 4. First signed release
 
@@ -54,7 +54,7 @@ The signed-release workflow checks that the repository is Public before publishi
 4. The workflow runs unit tests and Android lint, builds a debug artifact, then triggers **Publish Trading News GitHub Release**.
 5. The release workflow rebuilds the production release APK, verifies the persistent signing certificate, package name and version, and creates a standard GitHub Release with the APK attached.
 
-Future changes are committed directly to GitHub. The build workflow runs automatically, and after the four secrets are configured the release workflow creates the new versioned GitHub Release. No ZIP/APK upload is needed.
+Future source changes trigger the debug build/test workflow automatically. A production release is never published just because a commit was pushed: the owner starts the release workflow manually after deciding that the version is ready. No source ZIP or manual APK upload is needed.
 
 ## Key-loss warning
 
