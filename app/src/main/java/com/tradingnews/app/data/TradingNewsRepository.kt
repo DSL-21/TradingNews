@@ -6,6 +6,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
@@ -44,13 +46,23 @@ class TradingNewsRepository(context: Context) {
         )
     }
 
-    /** Removes all app-owned news cache fields, including the per-device refresh throttle. */
+    /**
+     * Clears the news cache and advances its generation. An in-flight request that
+     * started before this clear is not allowed to recreate the deleted cache.
+     */
     fun clearNewsCache() {
-        preferences.edit()
-            .remove(KEY_PAYLOAD)
-            .remove(KEY_RETRIEVED_AT)
-            .remove(KEY_LAST_FETCH_EPOCH)
-            .apply()
+        synchronized(CACHE_MUTATION_LOCK) {
+            val current = preferences.getLong(KEY_CACHE_GENERATION, 0L)
+            val next = if (current == Long.MAX_VALUE) 1L else current + 1L
+            preferences.edit()
+                .clear()
+                .putLong(KEY_CACHE_GENERATION, next)
+                .apply()
+        }
+    }
+
+    fun getCacheGeneration(): Long = synchronized(CACHE_MUTATION_LOCK) {
+        preferences.getLong(KEY_CACHE_GENERATION, 0L)
     }
 
     private fun estimatePreferenceBytes(values: Map<String, *>): Long =
@@ -99,7 +111,9 @@ class TradingNewsRepository(context: Context) {
         }
     }
 
-    suspend fun load(forceRefresh: Boolean): NewsFeed = withContext(Dispatchers.IO) {
+    suspend fun load(forceRefresh: Boolean): NewsFeed = fetchMutex.withLock {
+        withContext(Dispatchers.IO) {
+        val generationAtStart = getCacheGeneration()
         val cached = readCachedFeed()
         val now = Instant.now()
         val lastFetch = preferences.getLong(KEY_LAST_FETCH_EPOCH, 0L)
@@ -132,10 +146,14 @@ class TradingNewsRepository(context: Context) {
             val compactCache = serializeCache(articles)
             // A cancelled foreground refresh must not recreate data after a user-triggered clear.
             currentCoroutineContext().ensureActive()
-            preferences.edit()
-                .putString(KEY_PAYLOAD, compactCache)
-                .putString(KEY_RETRIEVED_AT, retrievedAt.toString())
-                .apply()
+            synchronized(CACHE_MUTATION_LOCK) {
+                if (preferences.getLong(KEY_CACHE_GENERATION, 0L) == generationAtStart) {
+                    preferences.edit()
+                        .putString(KEY_PAYLOAD, compactCache)
+                        .putString(KEY_RETRIEVED_AT, retrievedAt.toString())
+                        .apply()
+                }
+            }
 
             NewsFeed(
                 articles = articles,
@@ -157,6 +175,7 @@ class TradingNewsRepository(context: Context) {
             } else {
                 throw IOException("The live news feed is currently unavailable.", error)
             }
+        }
         }
     }
 
@@ -252,6 +271,9 @@ class TradingNewsRepository(context: Context) {
         const val KEY_PAYLOAD = "gdelt_payload"
         const val KEY_RETRIEVED_AT = "retrieved_at"
         const val KEY_LAST_FETCH_EPOCH = "last_fetch_epoch"
+        const val KEY_CACHE_GENERATION = "cache_generation"
+        val CACHE_MUTATION_LOCK = Any()
+        val fetchMutex = Mutex()
         const val GDELT_DOC_URL = "https://api.gdeltproject.org/api/v2/doc/doc"
         const val MARKET_NEWS_QUERY = """(forex OR currency OR "exchange rate" OR inflation OR CPI OR PCE OR "central bank" OR "Federal Reserve" OR FOMC OR ECB OR "Bank of England" OR BOE OR "Bank of Japan" OR BOJ OR "interest rate" OR "monetary policy" OR "bond yield" OR "treasury yield" OR unemployment OR "nonfarm payrolls" OR "jobs report" OR GDP OR PMI OR "retail sales" OR recession OR "stock market" OR equities OR "company earnings" OR "oil price" OR OPEC OR "natural gas" OR "gold price" OR commodities OR "supply chain" OR shipping OR "port strike" OR "trade war" OR tariffs OR sanctions OR election OR "government shutdown" OR "debt ceiling" OR "sovereign debt" OR "banking crisis" OR "credit crisis" OR war OR conflict OR "strait of hormuz" OR "red sea" OR "suez canal" OR earthquake OR flood OR "natural disaster" OR bitcoin OR cryptocurrency)"""
         const val USER_AGENT = "TradingNews-Android/0.7.0"
