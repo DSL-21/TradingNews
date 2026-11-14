@@ -597,7 +597,7 @@ private fun SettingsScreen(
                         Text("Estimated local user data", color = TextMuted, fontSize = 11.sp)
                         Text(formatBytes(storageInfo.estimatedUserDataBytes), color = Accent, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
-                    Text("Last cache update: ${storageInfo.retrievedAt?.let(::formatDateTime) ?: "No cached headlines"}", color = TextMuted, fontSize = 10.sp)
+                    Text("Last cache update: ${storageInfo.retrievedAt?.toString()?.let(::formatDateTime) ?: "No cached headlines"}", color = TextMuted, fontSize = 10.sp)
                     Text("This is an estimate of saved values, not the APK size. It excludes Android/WorkManager system records and your browser's own cache. Expired cache is discarded after 24 hours; a refresh replaces the previous cache.", color = TextMuted, fontSize = 10.sp, lineHeight = 15.sp)
                     HorizontalDivider(color = Border)
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
