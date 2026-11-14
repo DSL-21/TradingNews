@@ -275,9 +275,13 @@ class TradingNewsRepository(context: Context) {
 
     private fun clearCache() {
         synchronized(CACHE_MUTATION_LOCK) {
+            val current = safeLong(KEY_CACHE_GENERATION)
+            val next = if (current == Long.MAX_VALUE) 1L else current + 1L
             preferences.edit()
                 .remove(KEY_PAYLOAD)
                 .remove(KEY_RETRIEVED_AT)
+                .remove(KEY_LAST_FETCH_EPOCH)
+                .putLong(KEY_CACHE_GENERATION, next)
                 .apply()
         }
     }
