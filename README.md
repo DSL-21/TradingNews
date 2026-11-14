@@ -1,4 +1,4 @@
-# Trading News — Android 0.6.0
+# Trading News — Android 0.7.0
 
 Trading News is a simple English-language Android app for following Forex and broader market news. It combines a live headline feed, fast on-device search, topic filters, a user-configurable instrument watchlist, background refresh, and direct access to the official Forex Factory calendar.
 
@@ -43,7 +43,7 @@ Instrument matches are deterministic keyword relevance hints. They are not valid
 - No fabricated headlines, demo events or synthetic prices.
 - No copying of full third-party article bodies.
 - No native Forex Factory event database without written permission.
-- No licensed price-history provider or measured post-event price-reaction feature.
+- No broker integration, price-history provider or measured post-event price-reaction feature.
 - No instant remote push service; notifications are local WorkManager alerts.
 
 ## Automated GitHub workflow
@@ -57,6 +57,6 @@ See [docs/RELEASE_SETUP.md](docs/RELEASE_SETUP.md) for signing and publication s
 
 ## Build and security
 
-CI runs the GDELT parser/URL-safety tests, instrument relevance tests, OHLC calculator tests, Android lint and APK compilation. See [docs/SECURITY_AUDIT.md](docs/SECURITY_AUDIT.md) and [docs/DATA_SOURCES.md](docs/DATA_SOURCES.md).
+CI runs the GDELT parser/URL-safety tests, instrument relevance tests, Android lint and APK compilation. See [docs/SECURITY_AUDIT.md](docs/SECURITY_AUDIT.md) and [docs/DATA_SOURCES.md](docs/DATA_SOURCES.md).
 
 The included privacy policy remains a template and needs real operator details before public distribution. Do not publish it as a final legal policy until every placeholder is completed and the disclosures are checked against the actual operator and target jurisdictions. CI/static review is not physical-device QA, penetration testing, legal advice or security certification.
