@@ -8,8 +8,8 @@
   "more_on_paid_plans": 0,
   "attribution": {
     "source": "financecalendar.com",
-    "terms": "Use is governed by https://www.financecalendar.com/api/terms/ and applicable publisher source terms. This is an empty setup snapshot, not live calendar data.",
-    "docs": "https://www.financecalendar.com/api/"
+    "url": "https://www.financecalendar.com/",
+    "terms": "Use is governed by https://www.financecalendar.com/api/terms/ and applicable publisher source terms. This is an empty setup snapshot, not live calendar data."
   },
   "events": []
 }
