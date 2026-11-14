@@ -29,14 +29,9 @@ The app currently performs client-side search over the loaded set of up to 50 he
 **Official calendar:** https://www.forexfactory.com/calendar  
 **Official notices and terms:** https://www.forexfactory.com/notices
 
-Forex Factory's calendar page provides weekly export links for JSON, ICS, CSV and XML, hosted on its own `nfs.faireconomy.media` domain. The app exposes the original calendar and direct weekly export links:
+Forex Factory's calendar page provides weekly export links for JSON, ICS, CSV and XML, hosted on its own `nfs.faireconomy.media` domain. The page adds a changing `version` query parameter to the export links. Trading News opens the calendar page so the user can select the current provider-generated export URL, rather than embedding a stale hard-coded export URL in the app.
 
-- JSON: https://nfs.faireconomy.media/ff_calendar_thisweek.json
-- ICS: https://nfs.faireconomy.media/ff_calendar_thisweek.ics
-- CSV: https://nfs.faireconomy.media/ff_calendar_thisweek.csv
-- XML: https://nfs.faireconomy.media/ff_calendar_thisweek.xml
-
-These are source-hosted files. Trading News opens the links directly and does not automatically fetch, parse, cache, rehost, copy or redistribute their contents.
+These are source-hosted files. Trading News does not automatically fetch, parse, cache, rehost, copy or redistribute their contents.
 
 ### Why the app does not import the export
 
