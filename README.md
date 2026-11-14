@@ -48,13 +48,12 @@ Instrument matches are deterministic keyword relevance hints. They are not valid
 
 ## Automated GitHub workflow
 
-1. A push to main affecting Android app/Gradle source triggers **Build Trading News APK**: unit tests, Android lint and an installable debug APK artifact.
-2. A successful build triggers **Publish Trading News GitHub Release**.
-3. The release workflow requires the repository to be Public and the four Android signing secrets: ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS and ANDROID_KEY_PASSWORD.
-4. Once configured, it rebuilds and verifies the signed release APK and creates a standard versioned GitHub Release.
-5. Each app release increments both versionCode and versionName. Existing tags/releases are never overwritten.
+- Every relevant push to `main` runs **Build Trading News APK**: unit tests, Android lint, debug APK compilation and a downloadable CI artifact.
+- Production releases are **manual and deliberate**. Open Actions → **Publish Trading News GitHub Release** → Run workflow, choose `main`, enter `RELEASE`, and provide release notes.
+- The release workflow checks that the repository is Public and all four Android signing secrets exist, then reruns tests/lint, builds a signed release APK, verifies the package/version/certificate fingerprint and creates a versioned GitHub Release.
+- Increment both `versionCode` and `versionName` in `app/build.gradle.kts` before every new release. Existing tags/releases are never overwritten.
 
-See [docs/RELEASE_SETUP.md](docs/RELEASE_SETUP.md) for one-time signing setup. The repository is currently private; change its visibility only after checking commit history and confirming that no private material was committed.
+See [docs/RELEASE_SETUP.md](docs/RELEASE_SETUP.md) for signing and publication steps. Do not make the repository Public until you have reviewed its history and completed the owner-specific privacy policy.
 
 ## Build and security
 
