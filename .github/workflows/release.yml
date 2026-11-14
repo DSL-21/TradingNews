@@ -11,6 +11,11 @@ on:
         description: "Short release summary"
         required: true
         type: string
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/release-trigger.txt"
 
 permissions:
   contents: write
@@ -26,24 +31,46 @@ jobs:
     timeout-minutes: 50
     steps:
       - name: Validate release confirmation and source branch
+        id: release_input
         env:
+          EVENT_NAME: ${{ github.event_name }}
           CONFIRM_RELEASE: ${{ github.event.inputs.confirm_release }}
-          RELEASE_NOTES: ${{ github.event.inputs.release_notes }}
+          RELEASE_NOTES_INPUT: ${{ github.event.inputs.release_notes }}
+          HEAD_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
           GH_REF: ${{ github.ref }}
         run: |
           set -euo pipefail
-          if [[ "$CONFIRM_RELEASE" != "RELEASE" ]]; then
-            echo "::error::Enter RELEASE exactly to confirm publishing."
-            exit 1
-          fi
           if [[ "$GH_REF" != "refs/heads/main" ]]; then
             echo "::error::Production releases must be created from main."
             exit 1
           fi
-          if [[ -z "$RELEASE_NOTES" ]]; then
-            echo "::error::Release notes must not be empty."
+
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            if [[ "$CONFIRM_RELEASE" != "RELEASE" ]]; then
+              echo "::error::Enter RELEASE exactly to confirm publishing."
+              exit 1
+            fi
+            if [[ -z "$RELEASE_NOTES_INPUT" ]]; then
+              echo "::error::Release notes must not be empty."
+              exit 1
+            fi
+            RELEASE_NOTES="$RELEASE_NOTES_INPUT"
+          elif [[ "$EVENT_NAME" == "push" ]]; then
+            if [[ "$HEAD_COMMIT_MESSAGE" != *"[TRADINGNEWS_PRODUCTION_RELEASE_071]"* ]]; then
+              echo "::error::The one-time production release marker is missing."
+              exit 1
+            fi
+            RELEASE_NOTES="First production release of Trading News 0.7.1. Broker-independent market news discovery powered by GDELT DOC 2.0."
+          else
+            echo "::error::Unsupported release trigger."
             exit 1
           fi
+
+          {
+            printf 'release_notes<<RELEASE_NOTES_EOF\n'
+            printf '%s\n' "$RELEASE_NOTES"
+            printf 'RELEASE_NOTES_EOF\n'
+          } >> "$GITHUB_OUTPUT"
 
       - name: Checkout selected source revision
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -168,7 +195,7 @@ jobs:
           RELEASE_TAG: ${{ steps.version.outputs.tag }}
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
           APK_SHA256: ${{ steps.apk.outputs.sha256 }}
-          RELEASE_NOTES: ${{ github.event.inputs.release_notes }}
+          RELEASE_NOTES: ${{ steps.release_input.outputs.release_notes }}
           SOURCE_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
