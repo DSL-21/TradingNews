@@ -146,6 +146,12 @@ class NewsParserTest {
     }
 
     @Test
+    fun rejectsExcessivelyLongArticleUrlsBeforeTheyCanEnterTheLocalCache() {
+        val oversized = "https://example.com/" + "a".repeat(4_100)
+        assertNull(NewsParser.normalizedSafeHttpsUrl(oversized))
+    }
+
+    @Test
     fun normalizesPathsAndAcceptsDefaultHttpsPort() {
         val normalized = NewsParser.normalizedSafeHttpsUrl("https://example.com/a/../b")
         assertEquals("https://example.com/b", normalized)
