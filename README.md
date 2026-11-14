@@ -41,7 +41,7 @@ Forex Factory remains available as an official external calendar link only. Trad
 ## Automated GitHub workflow
 
 1. A push to main affecting Android app/Gradle source triggers **Build Trading News APK**: unit tests, Android lint and a debug APK artifact.
-2. A successful build triggers **Publish Trading News GitHub Release**. A signed public Release is created only after the repository is Public, all four Android signing secrets and `FC_API_KEY` are configured, and a recent attributed calendar snapshot is present. The workflow rebuilds/verifies the signed release APK and attaches it to a standard GitHub Release.
+2. A successful build triggers **Publish Trading News GitHub Release**. A signed public Release is created only after the repository is Public, all four Android signing secrets plus `FC_API_KEY` are configured, and a recent attributed calendar snapshot is present. The workflow rebuilds/verifies the signed release APK and attaches it to a standard GitHub Release.
 3. A daily scheduled **Update licensed economic calendar** workflow calls the Finance Calendar API using the `FC_API_KEY` repository secret and commits an updated `data/economic-calendar.json` snapshot.
 4. **Test calendar publishing pipeline** validates updater Python tests and snapshot JSON without rebuilding the Android APK for every daily data update.
 
