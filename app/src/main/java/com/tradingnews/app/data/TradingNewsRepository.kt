@@ -9,7 +9,7 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
-import java.io.InputStreamReader
+import java.io.ByteArrayOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
@@ -24,9 +24,11 @@ class TradingNewsRepository(context: Context) {
     fun getStorageInfo(): NewsStorageInfo {
         val payload = preferences.getString(KEY_PAYLOAD, null)
         val retrievedAtValue = preferences.getString(KEY_RETRIEVED_AT, null)
+        val lastFetchEpoch = preferences.getLong(KEY_LAST_FETCH_EPOCH, 0L)
         val cacheBytes = (
             (payload?.toByteArray(StandardCharsets.UTF_8)?.size ?: 0) +
-                (retrievedAtValue?.toByteArray(StandardCharsets.UTF_8)?.size ?: 0)
+                (retrievedAtValue?.toByteArray(StandardCharsets.UTF_8)?.size ?: 0) +
+                if (lastFetchEpoch > 0L) 8 else 0
             ).toLong()
         val count = payload?.let {
             runCatching {
@@ -42,9 +44,13 @@ class TradingNewsRepository(context: Context) {
         )
     }
 
-    /** Removes cached headlines and the refresh timestamp without changing user settings. */
+    /** Removes all app-owned news cache fields, including the per-device refresh throttle. */
     fun clearNewsCache() {
-        preferences.edit().clear().apply()
+        preferences.edit()
+            .remove(KEY_PAYLOAD)
+            .remove(KEY_RETRIEVED_AT)
+            .remove(KEY_LAST_FETCH_EPOCH)
+            .apply()
     }
 
     private fun estimatePreferenceBytes(values: Map<String, *>): Long =
@@ -179,8 +185,16 @@ class TradingNewsRepository(context: Context) {
                 throw IOException("News response exceeded the size limit")
             }
 
-            val body = InputStreamReader(connection.inputStream, Charsets.UTF_8).use { reader ->
-                readBounded(reader, MAX_RESPONSE_CHARS)
+            val mediaType = connection.contentType
+                ?.substringBefore(';')
+                ?.trim()
+                ?.lowercase()
+            if (mediaType !in ACCEPTED_JSON_MEDIA_TYPES) {
+                throw IOException("News provider returned a non-JSON response")
+            }
+
+            val body = connection.inputStream.use { input ->
+                readBounded(input, MAX_RESPONSE_BYTES)
             }
             if (body.isBlank()) throw IOException("News provider returned an empty response")
             return body
@@ -203,18 +217,18 @@ class TradingNewsRepository(context: Context) {
         return JSONObject().put("articles", cachedArticles).toString()
     }
 
-    private fun readBounded(reader: InputStreamReader, maxChars: Int): String {
-        val output = StringBuilder()
-        val buffer = CharArray(8_192)
+    private fun readBounded(input: java.io.InputStream, maxBytes: Long): String {
+        val output = ByteArrayOutputStream()
+        val buffer = ByteArray(8_192)
         while (true) {
-            val read = reader.read(buffer)
+            val read = input.read(buffer)
             if (read < 0) break
-            if (output.length + read > maxChars) {
+            if (output.size().toLong() + read.toLong() > maxBytes) {
                 throw IOException("News response exceeded the size limit")
             }
-            output.append(buffer, 0, read)
+            output.write(buffer, 0, read)
         }
-        return output.toString()
+        return String(output.toByteArray(), StandardCharsets.UTF_8)
     }
 
     private fun clearCache() {
@@ -239,13 +253,13 @@ class TradingNewsRepository(context: Context) {
         const val KEY_RETRIEVED_AT = "retrieved_at"
         const val KEY_LAST_FETCH_EPOCH = "last_fetch_epoch"
         const val GDELT_DOC_URL = "https://api.gdeltproject.org/api/v2/doc/doc"
-        const val MARKET_NEWS_QUERY = """(inflation OR "central bank" OR "interest rate" OR "monetary policy" OR "stock market" OR forex OR currency OR bonds OR "oil price" OR OPEC OR "natural gas" OR gold OR war OR conflict OR sanctions OR tariffs OR election OR bitcoin OR cryptocurrency OR "company earnings" OR bankruptcy OR "banking crisis")"""
-        const val USER_AGENT = "TradingNews-Android/0.6.0"
+        const val MARKET_NEWS_QUERY = """(forex OR currency OR "exchange rate" OR inflation OR CPI OR PCE OR "central bank" OR "Federal Reserve" OR FOMC OR ECB OR "Bank of England" OR BOE OR "Bank of Japan" OR BOJ OR "interest rate" OR "monetary policy" OR "bond yield" OR "treasury yield" OR unemployment OR "nonfarm payrolls" OR "jobs report" OR GDP OR PMI OR "retail sales" OR recession OR "stock market" OR equities OR "company earnings" OR "oil price" OR OPEC OR "natural gas" OR "gold price" OR commodities OR "supply chain" OR shipping OR "port strike" OR "trade war" OR tariffs OR sanctions OR election OR "government shutdown" OR "debt ceiling" OR "sovereign debt" OR "banking crisis" OR "credit crisis" OR war OR conflict OR "strait of hormuz" OR "red sea" OR "suez canal" OR earthquake OR flood OR "natural disaster" OR bitcoin OR cryptocurrency)"""
+        const val USER_AGENT = "TradingNews-Android/0.7.0"
         const val CONNECT_TIMEOUT_MS = 10_000
         const val READ_TIMEOUT_MS = 15_000
         const val MAX_CACHE_ARTICLE_COUNT = 50
         const val MAX_RESPONSE_BYTES = 2_000_000L
-        const val MAX_RESPONSE_CHARS = 2_000_000
+        val ACCEPTED_JSON_MEDIA_TYPES = setOf("application/json", "text/json")
         const val CACHE_TTL_SECONDS = 10 * 60L
         const val MAX_CACHE_AGE_SECONDS = 24 * 60 * 60L
         const val MIN_REFRESH_INTERVAL_SECONDS = 60L
