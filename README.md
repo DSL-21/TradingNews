@@ -15,7 +15,7 @@ The source, automated tests, Android builds and release workflow are managed dir
 - **Feed status:** LIVE, CACHED, OFFLINE and CONNECTING states.
 - **Background refresh:** optional Android WorkManager refresh, best-effort every 15 minutes. Android battery controls can delay it.
 - **Local notifications:** optional Android notifications for new headlines matching the watchlist. These are not remote push messages.
-- **Forex Factory calendar:** opens the official calendar and its own weekly export links (JSON, ICS, CSV). The calendar/export data stays hosted by Forex Factory.
+- **Forex Factory calendar:** opens the official calendar and its own weekly export links (JSON, ICS, CSV and XML). The calendar/export data stays hosted by Forex Factory.
 
 ## How Forex Factory is handled
 
@@ -24,6 +24,7 @@ Forex Factory provides a weekly export directly from its own calendar page:
 - Weekly JSON: https://nfs.faireconomy.media/ff_calendar_thisweek.json
 - Weekly ICS: https://nfs.faireconomy.media/ff_calendar_thisweek.ics
 - Weekly CSV: https://nfs.faireconomy.media/ff_calendar_thisweek.csv
+- Weekly XML: https://nfs.faireconomy.media/ff_calendar_thisweek.xml
 
 The export files are technically accessible over the internet. However, Forex Factory's notices explicitly prohibit copying, republication or redistribution of its calendar schedules and FEED database without prior written consent. Trading News therefore opens the original calendar/export URLs directly. It does not scrape, download, parse, cache or republish those events. This preserves access to the publisher's own current filters, time-zone options, impact levels and event details without creating an unofficial copy.
 
