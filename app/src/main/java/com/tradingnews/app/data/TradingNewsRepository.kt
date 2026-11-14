@@ -132,7 +132,22 @@ class TradingNewsRepository(context: Context) {
             throw IOException("Please wait before retrying the live news feed.")
         }
 
-        preferences.edit().putLong(KEY_LAST_FETCH_EPOCH, now.epochSecond).apply()
+        val fetchMayProceed = synchronized(CACHE_MUTATION_LOCK) {
+            if (preferences.getLong(KEY_CACHE_GENERATION, 0L) != generationAtStart) {
+                false
+            } else {
+                preferences.edit().putLong(KEY_LAST_FETCH_EPOCH, now.epochSecond).apply()
+                true
+            }
+        }
+        if (!fetchMayProceed) {
+            return@withContext cached ?: NewsFeed(
+                articles = emptyList(),
+                retrievedAt = now,
+                status = FeedStatus.OFFLINE,
+                notice = "The news cache was cleared before the refresh started."
+            )
+        }
 
         try {
             val rawPayload = fetchGdeltPayload()
