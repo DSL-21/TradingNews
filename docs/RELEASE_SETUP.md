@@ -9,24 +9,37 @@ A PKCS12 release keystore has been generated for this project. Download the keys
 Keystore alias: tradingnews-release  
 Certificate SHA-256 fingerprint: 34:CE:7E:FB:49:06:58:EB:40:7F:A2:D3:33:59:72:A6:DC:A7:13:BF:26:B2:DC:58:E2:B8:DC:39:1B:6A:A5:39
 
-## Create these four repository secrets
+## Configure the four repository secrets once
 
-Open the repository on GitHub, then choose Settings → Secrets and variables → Actions → New repository secret.
+The easiest method is to use the supplied PowerShell helper. It uses GitHub CLI to send the secrets directly to GitHub Actions without printing their values.
 
-1. ANDROID_KEYSTORE_BASE64 — base64 encoding of the .p12 keystore file. On Windows PowerShell, run the following after downloading the keystore:
+1. Install GitHub CLI and sign in from PowerShell:
 
    ```powershell
-   $bytes = [System.IO.File]::ReadAllBytes("$HOME\Downloads\TradingNews-release.p12")
-   [Convert]::ToBase64String($bytes) | Set-Clipboard
+   gh auth login --hostname github.com --git-protocol https --web
    ```
 
-   Paste the clipboard contents as the secret value.
+   Ensure the authenticated account has Admin access to this repository.
 
-2. ANDROID_KEYSTORE_PASSWORD — the generated password supplied separately with the keystore.
-3. ANDROID_KEY_ALIAS — exactly tradingnews-release.
-4. ANDROID_KEY_PASSWORD — the generated key password. It is the same as the keystore password for this key.
+2. Download these two private files from the assistant response and keep them outside the repository:
+   - `TradingNews-release.p12`
+   - `TradingNews-keystore-password.txt`
 
-Do not paste the password, base64 value, or private keystore into source files, issues, pull requests, or workflow logs.
+3. Download `scripts/setup-release-secrets.ps1` from this repository, then run it from PowerShell, for example:
+
+   ```powershell
+   .\setup-release-secrets.ps1 `
+     -KeystorePath "$HOME\Downloads\TradingNews-release.p12" `
+     -PasswordFile "$HOME\Downloads\TradingNews-keystore-password.txt"
+   ```
+
+The script sets the four required names:
+- `ANDROID_KEYSTORE_BASE64` — base64 of the PKCS12 keystore.
+- `ANDROID_KEYSTORE_PASSWORD` — password from the separate text file.
+- `ANDROID_KEY_ALIAS` — `tradingnews-release`.
+- `ANDROID_KEY_PASSWORD` — the same password for this key.
+
+The values are sent to GitHub with `gh secret set`; the script does not print them. It is safe to rerun if a secret needs to be refreshed. Do not commit the keystore or password file to the repository.
 
 ## What happens after setup
 
