@@ -18,7 +18,7 @@
 | Publisher labels | GDELT publisher name derives from the validated article URL host |
 | Deduplication | Duplicate GDELT article URLs discarded |
 | News cache | Compact parsed fields only; maximum 50 headlines; each refresh replaces the previous cache; invalid, future-dated or older-than-24-hour cache discarded |
-| User data deletion | Cache clear also removes the local request throttle; full reset disables/cancels the unique WorkManager refresh, clears cache/preferences and clears Trading News notifications |
+| User data deletion | Cache clear also removes the local request throttle; full reset disables/cancels the unique WorkManager refresh, clears cache/preferences, deletes the pre-0.6 legacy calendar cache and clears Trading News notifications |
 | Storage transparency | UI estimates cached metadata, request-throttle and preference-value bytes; excludes APK, SharedPreferences XML overhead, Android/WorkManager system records and external-browser cache |
 | Search | On-device query matching over loaded headline titles, publisher hosts, symbol matches and relevance reasons |
 | Refresh control | 10-minute local cache and 60-second per-device manual refresh throttle |
@@ -32,6 +32,8 @@
 | Data collection | No account, analytics SDK, advertising SDK or location collection |
 
 ## 0.7.0 product changes
+
+- A one-time migration deletes the obsolete `trading_news_calendar_cache` SharedPreferences file from earlier native-calendar builds. This removes the old locally cached Finance Calendar JSON; the current app no longer reads or writes that file.
 
 1. **Simplified economic calendar:** Removed the third-party Finance Calendar API, native snapshot parser, JSON cache, scheduled updater and related CI workflow.
 2. **Official Forex Factory:** Calendar screen opens the official Forex Factory calendar and source-hosted weekly JSON/ICS/CSV exports. It does not copy, scrape, download, parse or republish FEED data.
